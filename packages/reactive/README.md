@@ -1,48 +1,34 @@
 # @cgx/reactive
 
-This is the **L2 Reactive Kernel Layer** for Cgx. 
-It provides framework-agnostic signal primitives using a robust Push-Pull architecture, backed by `alien-signals`.
+## 功能
+`reactive` 为整个地图系统提供了无框架依赖的响应式内核机制。底层基于极速的 `alien-signals` 驱动，提供了 Push-Pull 架构的信号 (Signal) 状态追踪能力。
 
-## Features
-- **Zero Framework Dependency**: Operates independently of Vue/React.
-- **Micro Footprint**: Less than 3KB min+gz.
-- **Tree-shakeable**: Import only what you use.
+## 架构
+提供标准的信号原语，方便上层业务实现响应式更新：
+- `signal`: 创建读写的响应式信号。
+- `computed`: 创建依赖自动追踪的只读派生信号。
+- `effect`: 追踪依赖并在值变更时执行副作用。
+- `batch` / `untrack` / `peek`: 高级调度工具。
 
-## Core API
-
+## 示例
 ```typescript
-import { signal, computed, effect, batch, untrack, peek } from '@cgx/reactive';
+import { signal, computed, effect, batch } from '@cgx/reactive';
 
+// 创建响应式状态
 const count = signal(0);
 const double = computed(() => count.get() * 2);
 
-const off = effect(() => {
-  console.log(`Count is ${count.get()} and double is ${double.get()}`);
+// 监听响应式更新
+const stop = effect(() => {
+  console.log(`count: ${count.get()}, double: ${double.get()}`);
 });
 
-// Logs: Count is 0 and double is 0
-
+// 批量更新，触发一次 effect
 batch(() => {
   count.set(1);
   count.set(2);
 });
 
-// Logs: Count is 2 and double is 4
-// Batch prevents intermediate execution.
-
-off(); // Disposes the effect
+// 取消监听
+stop();
 ```
-
-## Collections API
-
-```typescript
-import { ObservableList, ObservableMap } from '@cgx/reactive/collections';
-
-const list = new ObservableList([1, 2, 3]);
-effect(() => console.log('List length:', list.length));
-
-list.push(4); // Trigger!
-```
-
-## Restrictions
-- **NEVER** import `cesium` directly into this package. L2+ is strictly decoupled from the global `Cesium` context.
