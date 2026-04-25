@@ -28,7 +28,4 @@ source/
 doc/
 legacy/
 
-# 遗留代码 - Mars3D 衍生代码
-refactor_graphic.js
-refactor.cjs
 plans/
