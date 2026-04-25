@@ -1,0 +1,26 @@
+{
+  "name": "@cgx/core",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "size": "size-limit"
+  },
+  "dependencies": {
+    "@cgx/reactive": "workspace:*",
+    "alien-signals": "^3.1.2"
+  },
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^12.1.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^20.9.0",
+    "size-limit": "^12.1.0",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@cgx/feature",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "size": "size-limit"
+  },
+  "dependencies": {
+    "@cgx/core": "workspace:*",
+    "alien-signals": "^3.1.2"
+  },
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^12.1.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^20.9.0",
+    "size-limit": "^12.1.0",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@cgx/adapter-cesium",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cesium": "^1.139.0"
+  },
+  "devDependencies": {
+    "@types/cesium": "latest",
+    "vitest": "latest",
+    "jsdom": "latest"
+  }
+}

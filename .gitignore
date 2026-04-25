@@ -1,0 +1,34 @@
+node_modules/
+dist/
+.vite/
+.cache/
+.turbo/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.*.local
+apiHTML/
+
+# 测试和分析副产物
+test-report/
+scripts/
+*.sh
+TYPE_REFACTOR_*.md
+!TYPE_REFACTOR_PLAN.md
+# 混淆代码和反编译文件
+x.js
+deob-project/
+*.deob.js
+source/
+.omc
+doc/
+legacy/
+
+# 遗留代码 - Mars3D 衍生代码
+refactor_graphic.js
+refactor.cjs
+plans/

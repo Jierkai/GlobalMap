@@ -1,0 +1,46 @@
+{
+  "name": "@cgx/provider-cn",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./tianditu": {
+      "types": "./dist/tianditu/index.d.ts",
+      "import": "./dist/tianditu/index.js",
+      "require": "./dist/tianditu/index.cjs"
+    },
+    "./baidu": {
+      "types": "./dist/baidu/index.d.ts",
+      "import": "./dist/baidu/index.js",
+      "require": "./dist/baidu/index.cjs"
+    },
+    "./gaode": {
+      "types": "./dist/gaode/index.d.ts",
+      "import": "./dist/gaode/index.js",
+      "require": "./dist/gaode/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cgx/core": "workspace:*",
+    "@cgx/layer": "workspace:*",
+    "alien-signals": "^3.1.2"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^20.9.0",
+    "vitest": "^2.1.9"
+  }
+}

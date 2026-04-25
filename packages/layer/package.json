@@ -1,0 +1,53 @@
+{
+  "name": "@cgx/layer",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./provider/xyz": {
+      "types": "./dist/provider/xyz.d.ts",
+      "import": "./dist/provider/xyz.js",
+      "require": "./dist/provider/xyz.cjs"
+    },
+    "./provider/wms": {
+      "types": "./dist/provider/wms.d.ts",
+      "import": "./dist/provider/wms.js",
+      "require": "./dist/provider/wms.cjs"
+    },
+    "./provider/wmts": {
+      "types": "./dist/provider/wmts.d.ts",
+      "import": "./dist/provider/wmts.js",
+      "require": "./dist/provider/wmts.cjs"
+    },
+    "./provider/singleTile": {
+      "types": "./dist/provider/singleTile.d.ts",
+      "import": "./dist/provider/singleTile.js",
+      "require": "./dist/provider/singleTile.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "size": "size-limit"
+  },
+  "dependencies": {
+    "@cgx/core": "workspace:*",
+    "alien-signals": "^3.1.2"
+  },
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^12.1.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^20.9.0",
+    "size-limit": "^12.1.0",
+    "vitest": "^2.1.9"
+  }
+}

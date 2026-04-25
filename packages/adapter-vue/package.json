@@ -1,0 +1,20 @@
+{
+  "name": "@cgx/adapter-vue",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "@cgx/reactive": "workspace:*",
+    "@cgx/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  }
+}
