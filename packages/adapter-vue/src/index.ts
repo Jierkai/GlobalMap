@@ -78,3 +78,10 @@ export function fromRef<T>(r: Ref<T>): Signal<T> {
 
   return s;
 }
+
+export { default as CgxImageryLayer } from './components/CgxImageryLayer.vue';
+export { default as CgxTilesetLayer } from './components/CgxTilesetLayer.vue';
+export { default as CgxFeature } from './components/CgxFeature.vue';
+export { useLayer } from './hooks/useLayer';
+export { useFeature } from './hooks/useFeature';
+

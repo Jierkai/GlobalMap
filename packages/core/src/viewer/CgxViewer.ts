@@ -39,6 +39,8 @@ export interface CgxViewer {
   readonly id: string;
   /** 持有当前生命周期状态的响应式信号。 */
   readonly status: ViewerStatusSignal;
+  /** L1 层适配器实例，如 Cesium 句柄。 */
+  readonly adapter: any;
   
   /** 初始化视图及其适配器。当完全准备就绪时决议 Promise。 */
   ready(): Promise<void>;
@@ -84,6 +86,7 @@ export function createCgxViewer(opts: CgxViewerOptions): CgxViewer {
   const viewer: CgxViewer = {
     id,
     status,
+    adapter: opts.adapter,
 
     ready(): Promise<void> {
       if (readyPromise) return readyPromise;

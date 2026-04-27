@@ -9,10 +9,14 @@
   "scripts": {
     "test": "vitest run"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "vue": "^3.5.0"
+  },
   "dependencies": {
     "@cgx/reactive": "workspace:*",
-    "@cgx/core": "workspace:*"
+    "@cgx/core": "workspace:*",
+    "@cgx/feature": "workspace:*"
   },
   "peerDependencies": {
     "vue": "^3.0.0"

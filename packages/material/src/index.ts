@@ -31,6 +31,10 @@ export {
   pulseCircleMaterial,
   glowLineMaterial,
   gradientPolygonMaterial,
+  dashedLineMaterial,
+  glowingWallMaterial,
+  waterSurfaceMaterial,
+  radarScanMaterial,
 } from './builtins.js';
 
 export type {

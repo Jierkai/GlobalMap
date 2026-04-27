@@ -42,5 +42,12 @@ export { toCartesian3, fromCartesian3 } from './coord';
 // 导出屏幕空间事件发射器
 export { ScreenSpaceEmitter } from './event';
 
+// 导出 Phase 2 模块
+export * from './provider';
+export * from './layer';
+export * from './primitive';
+export * from './material';
+export * from './picking';
+
 // 导出所有类型定义
 export * from './types';

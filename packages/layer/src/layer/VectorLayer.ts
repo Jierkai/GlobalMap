@@ -22,6 +22,14 @@ export function createVectorLayer<F>(opts: VectorLayerOptions<F> = {}): VectorLa
   return {
     ...base,
     type: 'vector',
-    data: opts.data
-  };
+    data: opts.data,
+    _mount(adapter: any) {
+       // Vector layers are logical containers for Features.
+       // Specific mounting logic (like grouping features into a CustomDataSource)
+       // can be implemented here if needed.
+    },
+    _unmount(adapter: any) {
+       // Unmount logic for VectorLayer
+    }
+  } as any;
 }

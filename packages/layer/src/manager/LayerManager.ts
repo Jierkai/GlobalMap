@@ -19,6 +19,8 @@ export interface LayerManagerApi {
 
 interface InternalLayer extends Layer {
   _setManager?(m: LayerManagerApi | null): void;
+  _mount?(adapter: any): void;
+  _unmount?(adapter: any): void;
   _emitMounted?(): void;
   _emitRemoved?(): void;
 }
@@ -38,6 +40,7 @@ export const Layers: Capability<LayerManagerApi> = {
         if (!current.find(l => l.id === layer.id)) {
            layersSignal([...current, layer]);
            (layer as InternalLayer)._setManager?.(api);
+           (layer as InternalLayer)._mount?.(viewer.adapter);
            (layer as InternalLayer)._emitMounted?.();
         }
       },
@@ -48,6 +51,7 @@ export const Layers: Capability<LayerManagerApi> = {
         if (layer) {
            layersSignal(current.filter(l => l.id !== id));
            (layer as InternalLayer)._setManager?.(null);
+           (layer as InternalLayer)._unmount?.(viewer.adapter);
            (layer as InternalLayer)._emitRemoved?.();
         }
       },
