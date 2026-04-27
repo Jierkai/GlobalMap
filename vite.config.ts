@@ -1,13 +1,20 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 import cesium from 'vite-plugin-cesium'
+import path from 'path'
 
 export default defineConfig({
   plugins: [cesium()],
   resolve: {
-    alias: {
-      '@': resolve(__dirname, './src')
-    }
+    alias: [
+      {
+        // 匹配所有的 @cgx/ 模块
+        find: /^@cgx\/(.*?)$/,
+        // 将它们统统指向本地的 packages/对应的模块/src 目录
+        replacement: path.resolve(__dirname, './packages/$1/src')
+      }
+    ]
+      
   },
   server: {
     port: 3000,
