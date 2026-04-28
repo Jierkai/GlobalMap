@@ -46,7 +46,7 @@ export function createPointFeature(opts: PointFeatureOptions): Feature<'point'> 
       
       const options = {
         id: feature.id,
-        name: feature.name,
+        name: feature.name ,
         position: feature.position?.(),
         point: {
           pixelSize: opts.pixelSize ?? 10,
