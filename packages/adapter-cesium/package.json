@@ -16,10 +16,9 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/cesium": "^1.139.0",
-    "vitest": "^2.1.9",
+    "cesium": "^1.139.0",
     "jsdom": "^29.0.2",
-    "cesium": "^1.139.0"
+    "vitest": "^2.1.9"
   },
   "publishConfig": {
     "access": "public"
