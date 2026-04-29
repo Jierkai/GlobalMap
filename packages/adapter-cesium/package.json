@@ -1,20 +1,40 @@
 {
   "name": "@cgx/adapter-cesium",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "scripts": {
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "cesium": "^1.139.0"
+    "test": "vitest run",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/cesium": "latest",
-    "vitest": "latest",
-    "jsdom": "latest"
-  }
+    "@types/cesium": "^1.139.0",
+    "vitest": "^2.1.9",
+    "jsdom": "^29.0.2",
+    "cesium": "^1.139.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/adapter-cesium"
+  },
+  "author": "CGX Team",
+  "peerDependencies": {
+    "cesium": ">=1.120.0"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

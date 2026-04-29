@@ -1,17 +1,35 @@
 {
   "name": "@cgx/material",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {},
   "dependencies": {
     "@cgx/reactive": "workspace:*",
     "@cgx/core": "workspace:*"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/material"
+  },
+  "author": "CGX Team",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

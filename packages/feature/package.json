@@ -4,7 +4,11 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -15,6 +19,7 @@
   "dependencies": {
     "@cgx/adapter-cesium": "workspace:*",
     "@cgx/core": "workspace:*",
+    "@cgx/reactive": "workspace:*",
     "alien-signals": "^3.1.2"
   },
   "devDependencies": {
@@ -23,5 +28,18 @@
     "happy-dom": "^20.9.0",
     "size-limit": "^12.1.0",
     "vitest": "^2.1.9"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/feature"
+  },
+  "author": "CGX Team",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

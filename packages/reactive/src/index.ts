@@ -50,7 +50,7 @@ export interface Signal<T> {
   /** 订阅信号值变化，返回取消订阅函数 */
   subscribe(handler: (v: T) => void): Off;
   /** 内部不透明符号，供框架适配器识别信号类型 */
-  readonly __symbol: unique symbol;
+  readonly __symbol: symbol;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface ReadonlySignal<T> {
   /** 订阅派生值变化，返回取消订阅函数 */
   subscribe(handler: (v: T) => void): Off;
   /** 内部不透明符号，供框架适配器识别信号类型 */
-  readonly __symbol: unique symbol;
+  readonly __symbol: symbol;
 }
 
 /**

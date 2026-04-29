@@ -47,14 +47,13 @@ importers:
         version: 2.1.9(@types/node@25.6.0)(@vitest/ui@2.1.9)(happy-dom@20.9.0)(jsdom@29.0.2)
 
   packages/adapter-cesium:
-    dependencies:
-      cesium:
-        specifier: ^1.139.0
-        version: 1.139.0
     devDependencies:
       '@types/cesium':
         specifier: latest
         version: 1.70.4
+      cesium:
+        specifier: ^1.139.0
+        version: 1.139.0
       jsdom:
         specifier: latest
         version: 29.0.2
@@ -135,6 +134,9 @@ importers:
       '@cgx/core':
         specifier: workspace:*
         version: link:../core
+      '@cgx/reactive':
+        specifier: workspace:*
+        version: link:../reactive
       alien-signals:
         specifier: ^3.1.2
         version: 3.1.2
@@ -172,6 +174,9 @@ importers:
       '@cgx/core':
         specifier: workspace:*
         version: link:../core
+      '@cgx/reactive':
+        specifier: workspace:*
+        version: link:../reactive
       alien-signals:
         specifier: ^3.1.2
         version: 3.1.2
@@ -209,6 +214,9 @@ importers:
       '@cgx/layer':
         specifier: workspace:*
         version: link:../layer
+      '@cgx/reactive':
+        specifier: workspace:*
+        version: link:../reactive
       alien-signals:
         specifier: ^3.1.2
         version: 3.1.2

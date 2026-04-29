@@ -5,27 +5,27 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts"
     },
     "./tianditu": {
-      "types": "./dist/tianditu/index.d.ts",
+      "development": "./src/tianditu/index.ts",
       "import": "./dist/tianditu/index.js",
-      "require": "./dist/tianditu/index.cjs"
+      "types": "./dist/tianditu/index.d.ts"
     },
     "./baidu": {
-      "types": "./dist/baidu/index.d.ts",
+      "development": "./src/baidu/index.ts",
       "import": "./dist/baidu/index.js",
-      "require": "./dist/baidu/index.cjs"
+      "types": "./dist/baidu/index.d.ts"
     },
     "./gaode": {
-      "types": "./dist/gaode/index.d.ts",
+      "development": "./src/gaode/index.ts",
       "import": "./dist/gaode/index.js",
-      "require": "./dist/gaode/index.cjs"
+      "types": "./dist/gaode/index.d.ts"
     }
   },
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -36,11 +36,22 @@
   "dependencies": {
     "@cgx/core": "workspace:*",
     "@cgx/layer": "workspace:*",
+    "@cgx/reactive": "workspace:*",
     "alien-signals": "^3.1.2"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^20.9.0",
     "vitest": "^2.1.9"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/provider-cn"
+  },
+  "author": "CGX Team"
 }

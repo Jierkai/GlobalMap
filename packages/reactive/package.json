@@ -1,18 +1,44 @@
 {
   "name": "@cgx/reactive",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./collections": "./src/collections/index.ts",
-    "./derive": "./src/derive/index.ts"
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./collections": {
+      "development": "./src/collections/index.ts",
+      "import": "./dist/collections/index.js",
+      "types": "./dist/collections/index.d.ts"
+    },
+    "./derive": {
+      "development": "./src/derive/index.ts",
+      "import": "./dist/derive/index.js",
+      "types": "./dist/derive/index.d.ts"
+    }
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {},
   "dependencies": {
     "alien-signals": "^3.1.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/reactive"
+  },
+  "author": "CGX Team",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }
