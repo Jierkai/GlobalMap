@@ -12,6 +12,7 @@
  * - 提供类型安全的 Viewer 句柄接口
  * - 管理 Viewer 生命周期（创建和销毁）
  * - 通过 WeakMap 实现句柄与原生 Viewer 的映射
+ * - 集成 WeatherEffectManager 管理天气特效
  */
 
 import * as Cesium from 'cesium';
@@ -24,6 +25,7 @@ import type {
   NativeImageryLayerCollection, 
   NativeTerrainProvider 
 } from './types';
+import { WeatherEffectManagerImpl } from './effect/manager';
 
 /**
  * Viewer 句柄与原生 Viewer 实例的映射表
@@ -47,6 +49,9 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  * 该函数会根据传入的配置选项初始化 Viewer，默认禁用大部分 UI 组件，
  * 以提供一个干净的 3D 场景。
  * 
+ * 如果 `options.effects` 中包含天气效果配置，会自动创建
+ * `WeatherEffectManager` 并初始化对应的效果实例。
+ * 
  * @param {HTMLElement | string} container - Viewer 容器元素或元素 ID
  * @param {ViewerOptions} [options={}] - Viewer 配置选项
  * @param {boolean} [options.baseLayerPicker=false] - 是否显示底图选择器
@@ -57,6 +62,7 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  * @param {boolean} [options.homeButton=false] - 是否显示主页按钮
  * @param {boolean} [options.navigationHelpButton=false] - 是否显示导航帮助按钮
  * @param {boolean} [options.sceneModePicker=false] - 是否显示场景模式选择器
+ * @param {WeatherEffectConfig[]} [options.effects] - 天气效果配置数组
  * @returns {CesiumViewerHandle} Viewer 句柄对象
  * 
  * @example
@@ -73,9 +79,21 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  *   baseLayerPicker: true
  * });
  * 
+ * // 声明式天气效果配置
+ * const handle = createViewer('cesiumContainer', {
+ *   effects: [
+ *     { type: 'rain', intensity: 0.8 },
+ *     { type: 'fog', density: 0.0003 },
+ *   ],
+ * });
+ * 
  * // 访问场景和相机
  * const scene = handle.scene;
  * const camera = handle.camera;
+ * 
+ * // 操作天气效果
+ * await handle.weatherEffectManager.enableEffect(WeatherType.Rain);
+ * handle.weatherEffectManager.disableEffect(WeatherType.Fog);
  * 
  * // 销毁 Viewer
  * handle.destroy();
@@ -94,13 +112,18 @@ export function createViewer(container: HTMLElement | string, options: ViewerOpt
     sceneModePicker: options.sceneModePicker ?? false       // 场景模式选择器，默认禁用
   });
 
+  // 创建天气效果管理器（先创建，handle 引用它）
+  const weatherEffectManager = new WeatherEffectManagerImpl();
+
   // 创建句柄对象，提供对 Viewer 的抽象访问
   const handle: CesiumViewerHandle = {
     /**
      * 销毁 Viewer 实例
-     * @description 清理资源并从映射表中移除
+     * @description 清理资源并从映射表中移除，同时销毁天气效果管理器
      */
     destroy() {
+      // 先销毁天气效果管理器中的所有效果
+      weatherEffectManager.disposeAll();
       if (!viewer.isDestroyed()) {
         viewer.destroy();
       }
@@ -115,11 +138,24 @@ export function createViewer(container: HTMLElement | string, options: ViewerOpt
     /** 获取影像图层集合 */
     get imageryLayers() { return viewer.imageryLayers as unknown as NativeImageryLayerCollection; },
     /** 获取地形提供者 */
-    get terrainProvider() { return viewer.terrainProvider as unknown as NativeTerrainProvider; }
+    get terrainProvider() { return viewer.terrainProvider as unknown as NativeTerrainProvider; },
+    /** 天气效果管理器 */
+    get weatherEffectManager() { return weatherEffectManager; },
   };
 
   // 将句柄与原生 Viewer 建立映射关系
   viewerMap.set(handle, viewer);
+
+  // 建立管理器与 handle 的双向引用
+  weatherEffectManager.setViewer(handle);
+
+  // 如果配置了天气效果，异步初始化（不阻塞返回）
+  if (options.effects && options.effects.length > 0) {
+    weatherEffectManager.initFromConfigs(options.effects).catch((err) => {
+      console.error('[createViewer] 天气效果初始化失败:', err);
+    });
+  }
+
   return handle;
 }
 
