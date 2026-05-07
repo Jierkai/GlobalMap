@@ -1,33 +1,35 @@
-import * as Cesium from 'cesium';
 import {
   WeatherEffect,
   WeatherType,
-  SnowConfig,
-} from '../types';
-import { _getInternalViewer } from '../viewer';
+  type FogConfig,
+} from './types';
+import { unsafeGetNativeViewer } from '@cgx/adapter-cesium';
+import { Cesium, type Viewer } from './cesium-bridge';
 import { GLSLPostProcess } from './utils/glsl-post-process';
-import { SNOW_FRAGMENT_SHADER } from './shaders';
+import { FOG_FRAGMENT_SHADER } from './shaders';
 
 /**
- * @fileoverview 雪天天气效果实现（GLSL 后处理版）
+ * @fileoverview 雾天天气效果实现（GLSL 后处理版）
  *
- * @module effect/snow
+ * @module effect/fog
  */
 
 /** 默认配置 */
 const DEFAULT_CONFIG = {
   intensity: 0.5,
-  speed: 1.0,
-  opacity: 0.8,
-  flakeSize: 0.02,
-  windSpeed: 0,
+  density: 0.0003,
+  color: 'rgba(200,210,220,0.7)',
+  minHeight: 0,
+  maxHeight: 500,
+  opacity: 1.0,
 } as const;
 
 /**
- * 雪天天气效果
+ * 雾天天气效果
  *
  * @description
- * 基于 GLSL 后处理（PostProcessStage）实现全屏雪花飘落效果。
+ * 基于 GLSL 后处理（PostProcessStage）实现距离雾效果。
+ * 通过读取场景深度纹理，根据距离和高度计算雾浓度。
  * 通过组合 `GLSLPostProcess` 组件管理后处理阶段的生命周期，
  * 遵循**组合优于继承**原则。
  *
@@ -35,33 +37,31 @@ const DEFAULT_CONFIG = {
  * - `GLSLPostProcess` — 封装 Cesium PostProcessStage 的创建、uniform 更新和销毁
  *
  * **配置映射：**
- * - `intensity` → `u_intensity`（降雪密度）
- * - `speed` → `u_speed`（雪花下落速度）
+ * - `intensity` → `u_intensity`（雾强度）
+ * - `density` → `u_density`（雾密度，控制衰减速率）
  * - `opacity` → `u_opacity`（整体透明度）
- * - `windSpeed` → `u_windSpeed`（水平飘动）
- * - `flakeSize` → `u_flakeSize`（雪花尺寸）
+ * - `color` → `u_fogColor`（雾颜色）
+ * - `minHeight` → `u_minHeight`（雾底部高度）
+ * - `maxHeight` → `u_maxHeight`（雾顶部高度）
  *
  * @example
  * ```typescript
- * const snow = new SnowWeatherEffect(viewerHandle, {
- *   intensity: 0.6,
- *   speed: 0.8,
- *   flakeSize: 0.02,
+ * const fog = new FogWeatherEffect(viewerHandle, {
+ *   density: 0.0003,
+ *   color: 'rgba(200,210,220,0.7)',
+ *   intensity: 0.5,
  * });
- * await snow.start();
+ * await fog.start();
  * ```
  */
-export class SnowWeatherEffect extends WeatherEffect<SnowConfig> {
-  readonly type = WeatherType.Snow;
+export class FogWeatherEffect extends WeatherEffect<FogConfig> {
+  readonly type = WeatherType.Fog;
 
   /** GLSL 后处理组合组件 */
   private _postProcess: GLSLPostProcess | null = null;
 
   /** 原生 Cesium Viewer */
-  private _nativeViewer: Cesium.Viewer | null = null;
-
-  /** 动画起始时间 */
-  private _startTime = 0;
+  private _nativeViewer: Viewer | null = null;
 
   /**
    * 初始化 GLSL 后处理阶段
@@ -71,14 +71,25 @@ export class SnowWeatherEffect extends WeatherEffect<SnowConfig> {
     const scene = this._nativeViewer.scene;
 
     this._postProcess = new GLSLPostProcess({
-      fragmentShader: SNOW_FRAGMENT_SHADER,
+      fragmentShader: FOG_FRAGMENT_SHADER,
       uniforms: {
         u_intensity: () => this.config.intensity ?? DEFAULT_CONFIG.intensity,
-        u_speed: () => this.config.speed ?? DEFAULT_CONFIG.speed,
+        u_density: () => this.config.density ?? DEFAULT_CONFIG.density,
         u_opacity: () => this.config.opacity ?? DEFAULT_CONFIG.opacity,
-        u_time: () => (performance.now() - this._startTime) / 1000,
-        u_windSpeed: () => this.config.windSpeed ?? DEFAULT_CONFIG.windSpeed,
-        u_flakeSize: () => this.config.flakeSize ?? DEFAULT_CONFIG.flakeSize,
+        u_fogColor: () => {
+          const color = Cesium.Color.fromCssColorString(
+            this.config.color ?? DEFAULT_CONFIG.color,
+          );
+          return new Cesium.Cartesian3(color.red, color.green, color.blue);
+        },
+        u_minHeight: () => this.config.minHeight ?? DEFAULT_CONFIG.minHeight,
+        u_maxHeight: () => this.config.maxHeight ?? DEFAULT_CONFIG.maxHeight,
+        u_cameraHeight: () => {
+          if (!this._nativeViewer) return 0;
+          const camera = this._nativeViewer.scene.camera;
+          const cartographic = Cesium.Cartographic.fromCartesian(camera.position);
+          return cartographic.height;
+        },
       },
     });
 
@@ -90,7 +101,6 @@ export class SnowWeatherEffect extends WeatherEffect<SnowConfig> {
    */
   protected _onStart(): void {
     if (!this._postProcess) return;
-    this._startTime = performance.now();
     this._postProcess.addToScene();
     this._postProcess.enable();
   }
@@ -138,10 +148,10 @@ export class SnowWeatherEffect extends WeatherEffect<SnowConfig> {
   /**
    * 从句柄获取原生 Cesium Viewer
    */
-  private _resolveViewer(): Cesium.Viewer {
-    const viewer = _getInternalViewer(this.viewer);
+  private _resolveViewer(): Viewer {
+    const viewer = unsafeGetNativeViewer(this.viewer) as Viewer | undefined;
     if (!viewer) {
-      throw new Error('[SnowWeatherEffect] 无法获取原生 Cesium Viewer');
+      throw new Error('[FogWeatherEffect] 无法获取原生 Cesium Viewer');
     }
     return viewer;
   }

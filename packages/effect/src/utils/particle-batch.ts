@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium } from '../cesium-bridge';
 
 /**
  * @fileoverview 粒子系统组件模块
@@ -22,7 +22,7 @@ export interface ParticleBatchConfig {
   /** 粒子高度（像素） */
   height: number;
   /** 粒子颜色 */
-  color: Cesium.Color;
+  color: InstanceType<typeof Cesium.Color>;
   /** 发射器半径（米） */
   emitterRadius: number;
   /** 粒子下落速度基准（米/秒） */
@@ -33,7 +33,7 @@ export interface ParticleBatchConfig {
 
 /** 单个粒子的运行时状态 */
 interface ParticleState {
-  billboard: Cesium.Billboard;
+  billboard: InstanceType<typeof Cesium.Billboard>;
   elapsed: number;
   velocityX: number;
   velocityZ: number;
@@ -72,7 +72,7 @@ interface ParticleState {
  */
 export class ParticleBatch {
   /** Billboard 集合图元 */
-  private _collection: Cesium.BillboardCollection | null = null;
+  private _collection: InstanceType<typeof Cesium.BillboardCollection> | null = null;
 
   /** 活跃粒子列表 */
   private _particles: ParticleState[] = [];
@@ -93,7 +93,7 @@ export class ParticleBatch {
   private _ready = false;
 
   /** Cesium 场景引用 */
-  private _scene: Cesium.Scene | null = null;
+  private _scene: InstanceType<typeof Cesium.Scene> | null = null;
 
   /** 相机位置缓存 */
   private _cameraPos = new Cesium.Cartesian3();
@@ -122,7 +122,7 @@ export class ParticleBatch {
   /**
    * 设置场景引用（在 _onStart 中由天气效果注入）
    */
-  setScene(scene: Cesium.Scene): void {
+  setScene(scene: InstanceType<typeof Cesium.Scene>): void {
     this._scene = scene;
     if (this._collection) {
       this._collection = new Cesium.BillboardCollection({ scene });
@@ -184,7 +184,7 @@ export class ParticleBatch {
    * @param dt - 帧时间增量（秒）
    * @param camera - Cesium 相机对象
    */
-  update(dt: number, camera: Cesium.Camera): void {
+  update(dt: number, camera: InstanceType<typeof Cesium.Camera>): void {
     if (!this._collection || !this._ready) return;
     if (this._paused) {
       this._collection.update();
@@ -202,7 +202,7 @@ export class ParticleBatch {
   /**
    * 根据累积时间发射新粒子
    */
-  private _emit(camera: Cesium.Camera): void {
+  private _emit(camera: InstanceType<typeof Cesium.Camera>): void {
     if (this._baseEmissionRate <= 0) return;
 
     const interval = 1 / this._baseEmissionRate;
@@ -303,7 +303,7 @@ export class ParticleBatch {
   /**
    * 更新颜色
    */
-  updateColor(color: Cesium.Color): void {
+  updateColor(color: InstanceType<typeof Cesium.Color>): void {
     this._config.color = color;
   }
 

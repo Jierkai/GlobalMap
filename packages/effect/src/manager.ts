@@ -1,13 +1,18 @@
 import {
   WeatherEffect,
-  WeatherBaseConfig,
-  WeatherEffectManager,
-  WeatherEffectConfig,
-  WeatherTransitionOptions,
   WeatherState,
   WeatherType,
-  CesiumViewerHandle,
-} from '../types';
+  type CesiumViewerHandle,
+  type WeatherBaseConfig,
+  type WeatherEffectConfig,
+  type WeatherEffectManager,
+  type WeatherTransitionOptions,
+} from './types';
+import { RainWeatherEffect } from './rain';
+import { SnowWeatherEffect } from './snow';
+import { FogWeatherEffect } from './fog';
+import { CloudWeatherEffect } from './cloud';
+import { LightningWeatherEffect } from './lightning';
 
 /**
  * @fileoverview 天气效果管理器实现
@@ -19,7 +24,7 @@ import {
  * 天气效果管理器
  *
  * @description
- * 实现 `WeatherEffectManager` 接口，作为核心管理器被 `CesiumViewerHandle` 直接持有。
+ * 实现 `WeatherEffectManager` 接口，作为 Cesium adapter 的扩展管理器独立挂载。
  *
  * **核心功能：**
  * - `initFromConfigs()` — 从配置数组批量创建并注册天气效果
@@ -75,8 +80,8 @@ export class WeatherEffectManagerImpl implements WeatherEffectManager {
    * 设置 Viewer 句柄引用
    *
    * @description
-   * 由于 `CesiumViewerHandle` 和 `WeatherEffectManagerImpl` 存在循环引用，
-   * 需要在两者都创建完成后调用此方法建立关联。
+   * 扩展包不侵入 `CesiumViewerHandle`，由业务侧或 `createWeatherEffectManager`
+   * 显式传入 Viewer 句柄。
    */
   setViewer(viewer: CesiumViewerHandle): void {
     this._viewer = viewer;
@@ -274,7 +279,6 @@ export class WeatherEffectManagerImpl implements WeatherEffectManager {
    *
    * @description
    * 根据配置中的 `type` 字段，映射到对应的天气效果类并实例化。
-   * 使用延迟导入以避免循环依赖。
    */
   private _createEffectFromConfig(
     config: WeatherEffectConfig,
@@ -289,28 +293,12 @@ export class WeatherEffectManagerImpl implements WeatherEffectManager {
 
     const { type, ...restConfig } = config as { type: WeatherType } & WeatherBaseConfig;
 
-    // 延迟导入避免循环依赖
     const effectMap: Record<string, () => WeatherEffect<WeatherBaseConfig>> = {
-      [WeatherType.Rain]: () => {
-        const { RainWeatherEffect } = require('./rain');
-        return new RainWeatherEffect(this._viewer!, restConfig as any);
-      },
-      [WeatherType.Snow]: () => {
-        const { SnowWeatherEffect } = require('./snow');
-        return new SnowWeatherEffect(this._viewer!, restConfig as any);
-      },
-      [WeatherType.Fog]: () => {
-        const { FogWeatherEffect } = require('./fog');
-        return new FogWeatherEffect(this._viewer!, restConfig as any);
-      },
-      [WeatherType.Cloud]: () => {
-        const { CloudWeatherEffect } = require('./cloud');
-        return new CloudWeatherEffect(this._viewer!, restConfig as any);
-      },
-      [WeatherType.Lightning]: () => {
-        const { LightningWeatherEffect } = require('./lightning');
-        return new LightningWeatherEffect(this._viewer!, restConfig as any);
-      },
+      [WeatherType.Rain]: () => new RainWeatherEffect(this._viewer!, restConfig as any),
+      [WeatherType.Snow]: () => new SnowWeatherEffect(this._viewer!, restConfig as any),
+      [WeatherType.Fog]: () => new FogWeatherEffect(this._viewer!, restConfig as any),
+      [WeatherType.Cloud]: () => new CloudWeatherEffect(this._viewer!, restConfig as any),
+      [WeatherType.Lightning]: () => new LightningWeatherEffect(this._viewer!, restConfig as any),
     };
 
     const factory = effectMap[type];

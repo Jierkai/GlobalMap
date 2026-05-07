@@ -1,35 +1,33 @@
-import * as Cesium from 'cesium';
 import {
   WeatherEffect,
   WeatherType,
-  FogConfig,
-} from '../types';
-import { _getInternalViewer } from '../viewer';
+  type RainConfig,
+} from './types';
+import { unsafeGetNativeViewer } from '@cgx/adapter-cesium';
+import { Cesium, type Color, type Viewer } from './cesium-bridge';
 import { GLSLPostProcess } from './utils/glsl-post-process';
-import { FOG_FRAGMENT_SHADER } from './shaders';
+import { RAIN_FRAGMENT_SHADER } from './shaders';
 
 /**
- * @fileoverview 雾天天气效果实现（GLSL 后处理版）
+ * @fileoverview 雨天天气效果实现（GLSL 后处理版）
  *
- * @module effect/fog
+ * @module effect/rain
  */
 
 /** 默认配置 */
 const DEFAULT_CONFIG = {
   intensity: 0.5,
-  density: 0.0003,
-  color: 'rgba(200,210,220,0.7)',
-  minHeight: 0,
-  maxHeight: 500,
-  opacity: 1.0,
+  speed: 1.0,
+  opacity: 0.6,
+  dropColor: 'rgba(174,194,224,0.6)',
+  windSpeed: 0,
 } as const;
 
 /**
- * 雾天天气效果
+ * 雨天天气效果
  *
  * @description
- * 基于 GLSL 后处理（PostProcessStage）实现距离雾效果。
- * 通过读取场景深度纹理，根据距离和高度计算雾浓度。
+ * 基于 GLSL 后处理（PostProcessStage）实现全屏雨滴效果。
  * 通过组合 `GLSLPostProcess` 组件管理后处理阶段的生命周期，
  * 遵循**组合优于继承**原则。
  *
@@ -37,31 +35,36 @@ const DEFAULT_CONFIG = {
  * - `GLSLPostProcess` — 封装 Cesium PostProcessStage 的创建、uniform 更新和销毁
  *
  * **配置映射：**
- * - `intensity` → `u_intensity`（雾强度）
- * - `density` → `u_density`（雾密度，控制衰减速率）
+ * - `intensity` → `u_intensity`（雨量密度）
+ * - `speed` → `u_speed`（雨滴下落速度）
  * - `opacity` → `u_opacity`（整体透明度）
- * - `color` → `u_fogColor`（雾颜色）
- * - `minHeight` → `u_minHeight`（雾底部高度）
- * - `maxHeight` → `u_maxHeight`（雾顶部高度）
+ * - `windSpeed` → `u_windSpeed`（水平风偏移）
+ * - `dropColor` → `u_dropColor`（雨滴颜色）
  *
  * @example
  * ```typescript
- * const fog = new FogWeatherEffect(viewerHandle, {
- *   density: 0.0003,
- *   color: 'rgba(200,210,220,0.7)',
- *   intensity: 0.5,
+ * const rain = new RainWeatherEffect(viewerHandle, {
+ *   intensity: 0.8,
+ *   speed: 1.2,
+ *   windSpeed: 0.3,
  * });
- * await fog.start();
+ * await rain.start();
+ * rain.updateConfig({ intensity: 0.3 });
+ * rain.stop();
+ * rain.dispose();
  * ```
  */
-export class FogWeatherEffect extends WeatherEffect<FogConfig> {
-  readonly type = WeatherType.Fog;
+export class RainWeatherEffect extends WeatherEffect<RainConfig> {
+  readonly type = WeatherType.Rain;
 
   /** GLSL 后处理组合组件 */
   private _postProcess: GLSLPostProcess | null = null;
 
   /** 原生 Cesium Viewer */
-  private _nativeViewer: Cesium.Viewer | null = null;
+  private _nativeViewer: Viewer | null = null;
+
+  /** 动画起始时间 */
+  private _startTime = 0;
 
   /**
    * 初始化 GLSL 后处理阶段
@@ -71,24 +74,16 @@ export class FogWeatherEffect extends WeatherEffect<FogConfig> {
     const scene = this._nativeViewer.scene;
 
     this._postProcess = new GLSLPostProcess({
-      fragmentShader: FOG_FRAGMENT_SHADER,
+      fragmentShader: RAIN_FRAGMENT_SHADER,
       uniforms: {
         u_intensity: () => this.config.intensity ?? DEFAULT_CONFIG.intensity,
-        u_density: () => this.config.density ?? DEFAULT_CONFIG.density,
+        u_speed: () => this.config.speed ?? DEFAULT_CONFIG.speed,
         u_opacity: () => this.config.opacity ?? DEFAULT_CONFIG.opacity,
-        u_fogColor: () => {
-          const color = Cesium.Color.fromCssColorString(
-            this.config.color ?? DEFAULT_CONFIG.color,
-          );
+        u_time: () => (performance.now() - this._startTime) / 1000,
+        u_windSpeed: () => this.config.windSpeed ?? DEFAULT_CONFIG.windSpeed,
+        u_dropColor: () => {
+          const color = this._parseColor(this.config.dropColor ?? DEFAULT_CONFIG.dropColor);
           return new Cesium.Cartesian3(color.red, color.green, color.blue);
-        },
-        u_minHeight: () => this.config.minHeight ?? DEFAULT_CONFIG.minHeight,
-        u_maxHeight: () => this.config.maxHeight ?? DEFAULT_CONFIG.maxHeight,
-        u_cameraHeight: () => {
-          if (!this._nativeViewer) return 0;
-          const camera = this._nativeViewer.scene.camera;
-          const cartographic = Cesium.Cartographic.fromCartesian(camera.position);
-          return cartographic.height;
         },
       },
     });
@@ -101,6 +96,7 @@ export class FogWeatherEffect extends WeatherEffect<FogConfig> {
    */
   protected _onStart(): void {
     if (!this._postProcess) return;
+    this._startTime = performance.now();
     this._postProcess.addToScene();
     this._postProcess.enable();
   }
@@ -137,7 +133,7 @@ export class FogWeatherEffect extends WeatherEffect<FogConfig> {
   }
 
   /**
-   * 响应配置变更（uniform 通过工厂函数自动更新）
+   * 响应配置变更（uniform 通过工厂函数自动更新，无需额外处理）
    */
   protected _onConfigUpdate(_changedKeys: string[]): void {
     // uniform 值通过工厂函数动态获取，无需手动更新
@@ -148,11 +144,18 @@ export class FogWeatherEffect extends WeatherEffect<FogConfig> {
   /**
    * 从句柄获取原生 Cesium Viewer
    */
-  private _resolveViewer(): Cesium.Viewer {
-    const viewer = _getInternalViewer(this.viewer);
+  private _resolveViewer(): Viewer {
+    const viewer = unsafeGetNativeViewer(this.viewer) as Viewer | undefined;
     if (!viewer) {
-      throw new Error('[FogWeatherEffect] 无法获取原生 Cesium Viewer');
+      throw new Error('[RainWeatherEffect] 无法获取原生 Cesium Viewer');
     }
     return viewer;
+  }
+
+  /**
+   * 解析 CSS 颜色字符串为 Cesium Color
+   */
+  private _parseColor(cssColor: string): Color {
+    return Cesium.Color.fromCssColorString(cssColor);
   }
 }

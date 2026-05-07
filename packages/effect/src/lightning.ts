@@ -1,10 +1,10 @@
-import * as Cesium from 'cesium';
 import {
   WeatherEffect,
   WeatherType,
-  WeatherBaseConfig,
-} from '../types';
-import { _getInternalViewer } from '../viewer';
+  type LightningConfig,
+} from './types';
+import { unsafeGetNativeViewer } from '@cgx/adapter-cesium';
+import { Cesium, type Viewer } from './cesium-bridge';
 import { GLSLPostProcess } from './utils/glsl-post-process';
 import { LIGHTNING_FRAGMENT_SHADER } from './shaders';
 
@@ -13,18 +13,6 @@ import { LIGHTNING_FRAGMENT_SHADER } from './shaders';
  *
  * @module effect/lightning
  */
-
-/** 闪电配置接口（扩展基础配置） */
-export interface LightningConfig extends WeatherBaseConfig {
-  /** 闪电间隔（秒） */
-  interval?: number;
-  /** 闪电持续时间（秒） */
-  flashDuration?: number;
-  /** 闪电颜色 (CSS 颜色字符串) */
-  flashColor?: string;
-  /** 闪电分支数量 */
-  branchCount?: number;
-}
 
 /** 默认配置 */
 const DEFAULT_CONFIG = {
@@ -73,7 +61,7 @@ export class LightningWeatherEffect extends WeatherEffect<LightningConfig> {
   private _postProcess: GLSLPostProcess | null = null;
 
   /** 原生 Cesium Viewer */
-  private _nativeViewer: Cesium.Viewer | null = null;
+  private _nativeViewer: Viewer | null = null;
 
   /** 自上次闪电以来的累计时间 */
   private _timeSinceLastStrike = 0;
@@ -176,8 +164,8 @@ export class LightningWeatherEffect extends WeatherEffect<LightningConfig> {
   /**
    * 从句柄获取原生 Cesium Viewer
    */
-  private _resolveViewer(): Cesium.Viewer {
-    const viewer = _getInternalViewer(this.viewer);
+  private _resolveViewer(): Viewer {
+    const viewer = unsafeGetNativeViewer(this.viewer) as Viewer | undefined;
     if (!viewer) {
       throw new Error('[LightningWeatherEffect] 无法获取原生 Cesium Viewer');
     }

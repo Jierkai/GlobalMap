@@ -1,0 +1,127 @@
+{
+  "name": "@cgx/effect",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./types": {
+      "development": "./src/types.ts",
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    },
+    "./manager": {
+      "development": "./src/manager.ts",
+      "import": "./dist/manager.js",
+      "types": "./dist/manager.d.ts"
+    },
+    "./rain": {
+      "development": "./src/rain.ts",
+      "import": "./dist/rain.js",
+      "types": "./dist/rain.d.ts"
+    },
+    "./snow": {
+      "development": "./src/snow.ts",
+      "import": "./dist/snow.js",
+      "types": "./dist/snow.d.ts"
+    },
+    "./fog": {
+      "development": "./src/fog.ts",
+      "import": "./dist/fog.js",
+      "types": "./dist/fog.d.ts"
+    },
+    "./cloud": {
+      "development": "./src/cloud.ts",
+      "import": "./dist/cloud.js",
+      "types": "./dist/cloud.d.ts"
+    },
+    "./lightning": {
+      "development": "./src/lightning.ts",
+      "import": "./dist/lightning.js",
+      "types": "./dist/lightning.d.ts"
+    },
+    "./shaders": {
+      "development": "./src/shaders/index.ts",
+      "import": "./dist/shaders/index.js",
+      "types": "./dist/shaders/index.d.ts"
+    },
+    "./shaders/rain": {
+      "development": "./src/shaders/rain.ts",
+      "import": "./dist/shaders/rain.js",
+      "types": "./dist/shaders/rain.d.ts"
+    },
+    "./shaders/snow": {
+      "development": "./src/shaders/snow.ts",
+      "import": "./dist/shaders/snow.js",
+      "types": "./dist/shaders/snow.d.ts"
+    },
+    "./shaders/fog": {
+      "development": "./src/shaders/fog.ts",
+      "import": "./dist/shaders/fog.js",
+      "types": "./dist/shaders/fog.d.ts"
+    },
+    "./shaders/cloud": {
+      "development": "./src/shaders/cloud.ts",
+      "import": "./dist/shaders/cloud.js",
+      "types": "./dist/shaders/cloud.d.ts"
+    },
+    "./shaders/lightning": {
+      "development": "./src/shaders/lightning.ts",
+      "import": "./dist/shaders/lightning.js",
+      "types": "./dist/shaders/lightning.d.ts"
+    },
+    "./utils/animator": {
+      "development": "./src/utils/animator.ts",
+      "import": "./dist/utils/animator.js",
+      "types": "./dist/utils/animator.d.ts"
+    },
+    "./utils/camera-binder": {
+      "development": "./src/utils/camera-binder.ts",
+      "import": "./dist/utils/camera-binder.js",
+      "types": "./dist/utils/camera-binder.d.ts"
+    },
+    "./utils/glsl-post-process": {
+      "development": "./src/utils/glsl-post-process.ts",
+      "import": "./dist/utils/glsl-post-process.js",
+      "types": "./dist/utils/glsl-post-process.d.ts"
+    },
+    "./utils/particle-batch": {
+      "development": "./src/utils/particle-batch.ts",
+      "import": "./dist/utils/particle-batch.js",
+      "types": "./dist/utils/particle-batch.d.ts"
+    },
+    "./utils/scene-manager": {
+      "development": "./src/utils/scene-manager.ts",
+      "import": "./dist/utils/scene-manager.js",
+      "types": "./dist/utils/scene-manager.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cgx/adapter-cesium": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/effect"
+  },
+  "author": "CGX Team",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

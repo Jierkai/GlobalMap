@@ -1,33 +1,34 @@
-import * as Cesium from 'cesium';
 import {
   WeatherEffect,
   WeatherType,
-  RainConfig,
-} from '../types';
-import { _getInternalViewer } from '../viewer';
+  type CloudConfig,
+} from './types';
+import { unsafeGetNativeViewer } from '@cgx/adapter-cesium';
+import { Cesium, type Viewer } from './cesium-bridge';
 import { GLSLPostProcess } from './utils/glsl-post-process';
-import { RAIN_FRAGMENT_SHADER } from './shaders';
+import { CLOUD_FRAGMENT_SHADER } from './shaders';
 
 /**
- * @fileoverview 雨天天气效果实现（GLSL 后处理版）
+ * @fileoverview 云天天气效果实现（GLSL 后处理版）
  *
- * @module effect/rain
+ * @module effect/cloud
  */
 
 /** 默认配置 */
 const DEFAULT_CONFIG = {
   intensity: 0.5,
-  speed: 1.0,
-  opacity: 0.6,
-  dropColor: 'rgba(174,194,224,0.6)',
-  windSpeed: 0,
+  opacity: 0.7,
+  coverage: 0.5,
+  driftSpeed: 10,
+  cloudColor: 'rgba(255,255,255,0.9)',
 } as const;
 
 /**
- * 雨天天气效果
+ * 云天天气效果
  *
  * @description
- * 基于 GLSL 后处理（PostProcessStage）实现全屏雨滴效果。
+ * 基于 GLSL 后处理（PostProcessStage）实现体积云效果。
+ * 使用分形噪声在屏幕空间生成云层，随时间缓慢漂移。
  * 通过组合 `GLSLPostProcess` 组件管理后处理阶段的生命周期，
  * 遵循**组合优于继承**原则。
  *
@@ -35,33 +36,29 @@ const DEFAULT_CONFIG = {
  * - `GLSLPostProcess` — 封装 Cesium PostProcessStage 的创建、uniform 更新和销毁
  *
  * **配置映射：**
- * - `intensity` → `u_intensity`（雨量密度）
- * - `speed` → `u_speed`（雨滴下落速度）
+ * - `intensity` → `u_intensity`（云层强度）
  * - `opacity` → `u_opacity`（整体透明度）
- * - `windSpeed` → `u_windSpeed`（水平风偏移）
- * - `dropColor` → `u_dropColor`（雨滴颜色）
+ * - `coverage` → `u_coverage`（云层覆盖率）
+ * - `driftSpeed` → `u_driftSpeed`（漂移速度）
+ * - `cloudColor` → `u_cloudColor`（云颜色）
  *
  * @example
  * ```typescript
- * const rain = new RainWeatherEffect(viewerHandle, {
- *   intensity: 0.8,
- *   speed: 1.2,
- *   windSpeed: 0.3,
+ * const cloud = new CloudWeatherEffect(viewerHandle, {
+ *   coverage: 0.5,
+ *   driftSpeed: 10,
  * });
- * await rain.start();
- * rain.updateConfig({ intensity: 0.3 });
- * rain.stop();
- * rain.dispose();
+ * await cloud.start();
  * ```
  */
-export class RainWeatherEffect extends WeatherEffect<RainConfig> {
-  readonly type = WeatherType.Rain;
+export class CloudWeatherEffect extends WeatherEffect<CloudConfig> {
+  readonly type = WeatherType.Cloud;
 
   /** GLSL 后处理组合组件 */
   private _postProcess: GLSLPostProcess | null = null;
 
   /** 原生 Cesium Viewer */
-  private _nativeViewer: Cesium.Viewer | null = null;
+  private _nativeViewer: Viewer | null = null;
 
   /** 动画起始时间 */
   private _startTime = 0;
@@ -73,21 +70,20 @@ export class RainWeatherEffect extends WeatherEffect<RainConfig> {
     this._nativeViewer = this._resolveViewer();
     const scene = this._nativeViewer.scene;
 
-    const c = this.config;
-    const dropColor = this._parseColor(c.dropColor ?? DEFAULT_CONFIG.dropColor);
-
     this._postProcess = new GLSLPostProcess({
-      fragmentShader: RAIN_FRAGMENT_SHADER,
+      fragmentShader: CLOUD_FRAGMENT_SHADER,
       uniforms: {
         u_intensity: () => this.config.intensity ?? DEFAULT_CONFIG.intensity,
-        u_speed: () => this.config.speed ?? DEFAULT_CONFIG.speed,
         u_opacity: () => this.config.opacity ?? DEFAULT_CONFIG.opacity,
         u_time: () => (performance.now() - this._startTime) / 1000,
-        u_windSpeed: () => this.config.windSpeed ?? DEFAULT_CONFIG.windSpeed,
-        u_dropColor: () => {
-          const color = this._parseColor(this.config.dropColor ?? DEFAULT_CONFIG.dropColor);
+        u_coverage: () => this.config.coverage ?? DEFAULT_CONFIG.coverage,
+        u_cloudColor: () => {
+          const color = Cesium.Color.fromCssColorString(
+            this.config.cloudColor ?? DEFAULT_CONFIG.cloudColor,
+          );
           return new Cesium.Cartesian3(color.red, color.green, color.blue);
         },
+        u_driftSpeed: () => this.config.driftSpeed ?? DEFAULT_CONFIG.driftSpeed,
       },
     });
 
@@ -136,7 +132,7 @@ export class RainWeatherEffect extends WeatherEffect<RainConfig> {
   }
 
   /**
-   * 响应配置变更（uniform 通过工厂函数自动更新，无需额外处理）
+   * 响应配置变更（uniform 通过工厂函数自动更新）
    */
   protected _onConfigUpdate(_changedKeys: string[]): void {
     // uniform 值通过工厂函数动态获取，无需手动更新
@@ -147,18 +143,11 @@ export class RainWeatherEffect extends WeatherEffect<RainConfig> {
   /**
    * 从句柄获取原生 Cesium Viewer
    */
-  private _resolveViewer(): Cesium.Viewer {
-    const viewer = _getInternalViewer(this.viewer);
+  private _resolveViewer(): Viewer {
+    const viewer = unsafeGetNativeViewer(this.viewer) as Viewer | undefined;
     if (!viewer) {
-      throw new Error('[RainWeatherEffect] 无法获取原生 Cesium Viewer');
+      throw new Error('[CloudWeatherEffect] 无法获取原生 Cesium Viewer');
     }
     return viewer;
-  }
-
-  /**
-   * 解析 CSS 颜色字符串为 Cesium Color
-   */
-  private _parseColor(cssColor: string): Cesium.Color {
-    return Cesium.Color.fromCssColorString(cssColor);
   }
 }

@@ -1,44 +1,33 @@
-import * as Cesium from 'cesium';
 import {
   WeatherEffect,
   WeatherType,
-  WeatherBaseConfig,
-} from '../types';
-import { _getInternalViewer } from '../viewer';
+  type SnowConfig,
+} from './types';
+import { unsafeGetNativeViewer } from '@cgx/adapter-cesium';
+import { type Viewer } from './cesium-bridge';
 import { GLSLPostProcess } from './utils/glsl-post-process';
-import { CLOUD_FRAGMENT_SHADER } from './shaders';
+import { SNOW_FRAGMENT_SHADER } from './shaders';
 
 /**
- * @fileoverview 云天天气效果实现（GLSL 后处理版）
+ * @fileoverview 雪天天气效果实现（GLSL 后处理版）
  *
- * @module effect/cloud
+ * @module effect/snow
  */
-
-/** 云层配置接口（扩展基础配置） */
-export interface CloudConfig extends WeatherBaseConfig {
-  /** 云层覆盖率 (0-1) */
-  coverage?: number;
-  /** 云层移动速度（米/秒） */
-  driftSpeed?: number;
-  /** 云颜色 (CSS 颜色字符串) */
-  cloudColor?: string;
-}
 
 /** 默认配置 */
 const DEFAULT_CONFIG = {
   intensity: 0.5,
-  opacity: 0.7,
-  coverage: 0.5,
-  driftSpeed: 10,
-  cloudColor: 'rgba(255,255,255,0.9)',
+  speed: 1.0,
+  opacity: 0.8,
+  flakeSize: 0.02,
+  windSpeed: 0,
 } as const;
 
 /**
- * 云天天气效果
+ * 雪天天气效果
  *
  * @description
- * 基于 GLSL 后处理（PostProcessStage）实现体积云效果。
- * 使用分形噪声在屏幕空间生成云层，随时间缓慢漂移。
+ * 基于 GLSL 后处理（PostProcessStage）实现全屏雪花飘落效果。
  * 通过组合 `GLSLPostProcess` 组件管理后处理阶段的生命周期，
  * 遵循**组合优于继承**原则。
  *
@@ -46,29 +35,30 @@ const DEFAULT_CONFIG = {
  * - `GLSLPostProcess` — 封装 Cesium PostProcessStage 的创建、uniform 更新和销毁
  *
  * **配置映射：**
- * - `intensity` → `u_intensity`（云层强度）
+ * - `intensity` → `u_intensity`（降雪密度）
+ * - `speed` → `u_speed`（雪花下落速度）
  * - `opacity` → `u_opacity`（整体透明度）
- * - `coverage` → `u_coverage`（云层覆盖率）
- * - `driftSpeed` → `u_driftSpeed`（漂移速度）
- * - `cloudColor` → `u_cloudColor`（云颜色）
+ * - `windSpeed` → `u_windSpeed`（水平飘动）
+ * - `flakeSize` → `u_flakeSize`（雪花尺寸）
  *
  * @example
  * ```typescript
- * const cloud = new CloudWeatherEffect(viewerHandle, {
- *   coverage: 0.5,
- *   driftSpeed: 10,
+ * const snow = new SnowWeatherEffect(viewerHandle, {
+ *   intensity: 0.6,
+ *   speed: 0.8,
+ *   flakeSize: 0.02,
  * });
- * await cloud.start();
+ * await snow.start();
  * ```
  */
-export class CloudWeatherEffect extends WeatherEffect<CloudConfig> {
-  readonly type = WeatherType.Cloud;
+export class SnowWeatherEffect extends WeatherEffect<SnowConfig> {
+  readonly type = WeatherType.Snow;
 
   /** GLSL 后处理组合组件 */
   private _postProcess: GLSLPostProcess | null = null;
 
   /** 原生 Cesium Viewer */
-  private _nativeViewer: Cesium.Viewer | null = null;
+  private _nativeViewer: Viewer | null = null;
 
   /** 动画起始时间 */
   private _startTime = 0;
@@ -81,19 +71,14 @@ export class CloudWeatherEffect extends WeatherEffect<CloudConfig> {
     const scene = this._nativeViewer.scene;
 
     this._postProcess = new GLSLPostProcess({
-      fragmentShader: CLOUD_FRAGMENT_SHADER,
+      fragmentShader: SNOW_FRAGMENT_SHADER,
       uniforms: {
         u_intensity: () => this.config.intensity ?? DEFAULT_CONFIG.intensity,
+        u_speed: () => this.config.speed ?? DEFAULT_CONFIG.speed,
         u_opacity: () => this.config.opacity ?? DEFAULT_CONFIG.opacity,
         u_time: () => (performance.now() - this._startTime) / 1000,
-        u_coverage: () => this.config.coverage ?? DEFAULT_CONFIG.coverage,
-        u_cloudColor: () => {
-          const color = Cesium.Color.fromCssColorString(
-            this.config.cloudColor ?? DEFAULT_CONFIG.cloudColor,
-          );
-          return new Cesium.Cartesian3(color.red, color.green, color.blue);
-        },
-        u_driftSpeed: () => this.config.driftSpeed ?? DEFAULT_CONFIG.driftSpeed,
+        u_windSpeed: () => this.config.windSpeed ?? DEFAULT_CONFIG.windSpeed,
+        u_flakeSize: () => this.config.flakeSize ?? DEFAULT_CONFIG.flakeSize,
       },
     });
 
@@ -153,10 +138,10 @@ export class CloudWeatherEffect extends WeatherEffect<CloudConfig> {
   /**
    * 从句柄获取原生 Cesium Viewer
    */
-  private _resolveViewer(): Cesium.Viewer {
-    const viewer = _getInternalViewer(this.viewer);
+  private _resolveViewer(): Viewer {
+    const viewer = unsafeGetNativeViewer(this.viewer) as Viewer | undefined;
     if (!viewer) {
-      throw new Error('[CloudWeatherEffect] 无法获取原生 Cesium Viewer');
+      throw new Error('[SnowWeatherEffect] 无法获取原生 Cesium Viewer');
     }
     return viewer;
   }

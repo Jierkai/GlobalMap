@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium } from '../cesium-bridge';
 
 /**
  * @fileoverview GLSL 后处理组合组件
@@ -8,7 +8,7 @@ import * as Cesium from 'cesium';
  */
 
 /** Uniform 值类型（兼容 Cesium PostProcessStage.uniforms） */
-type UniformValue = Cesium.PostProcessStage["uniforms"][string];
+type UniformValue = InstanceType<typeof Cesium.PostProcessStage>["uniforms"][string];
 
 /** GLSL 后处理配置 */
 export interface GLSLPostProcessConfig {
@@ -49,10 +49,10 @@ export interface GLSLPostProcessConfig {
  */
 export class GLSLPostProcess {
   /** Cesium 后处理阶段实例 */
-  private _stage: Cesium.PostProcessStage | null = null;
+  private _stage: InstanceType<typeof Cesium.PostProcessStage> | null = null;
 
   /** Cesium 场景引用 */
-  private _scene: Cesium.Scene | null = null;
+  private _scene: InstanceType<typeof Cesium.Scene> | null = null;
 
   /** 是否已启用渲染 */
   private _enabled = false;
@@ -69,7 +69,7 @@ export class GLSLPostProcess {
    *
    * @param scene - Cesium 场景对象
    */
-  init(scene: Cesium.Scene): void {
+  init(scene: InstanceType<typeof Cesium.Scene>): void {
     this._scene = scene;
     this._stage = new Cesium.PostProcessStage({
       fragmentShader: this._config.fragmentShader,

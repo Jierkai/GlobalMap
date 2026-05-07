@@ -3,14 +3,19 @@ import { CesiumViewerHandle } from './types';
 import { _getInternalViewer } from './viewer';
 
 export class PickingBridge {
-  private static objectToFeatureMap = new WeakMap<any, any>();
+  private static objectToFeatureMap = new WeakMap<object, any>();
+  private static primitiveToFeatureMap = new Map<string | number | symbol, any>();
 
   /**
    * Bind a feature data object to a Cesium entity or primitive.
    */
   static setFeature(cesiumObject: any, feature: any): void {
     if (cesiumObject) {
-      this.objectToFeatureMap.set(cesiumObject, feature);
+      if (typeof cesiumObject === 'object' || typeof cesiumObject === 'function') {
+        this.objectToFeatureMap.set(cesiumObject, feature);
+      } else {
+        this.primitiveToFeatureMap.set(cesiumObject, feature);
+      }
     }
   }
 
@@ -19,7 +24,10 @@ export class PickingBridge {
    */
   static getFeature(cesiumObject: any): any | undefined {
     if (!cesiumObject) return undefined;
-    return this.objectToFeatureMap.get(cesiumObject);
+    if (typeof cesiumObject === 'object' || typeof cesiumObject === 'function') {
+      return this.objectToFeatureMap.get(cesiumObject);
+    }
+    return this.primitiveToFeatureMap.get(cesiumObject);
   }
 
   /**
@@ -27,7 +35,11 @@ export class PickingBridge {
    */
   static removeFeature(cesiumObject: any): void {
     if (cesiumObject) {
-      this.objectToFeatureMap.delete(cesiumObject);
+      if (typeof cesiumObject === 'object' || typeof cesiumObject === 'function') {
+        this.objectToFeatureMap.delete(cesiumObject);
+      } else {
+        this.primitiveToFeatureMap.delete(cesiumObject);
+      }
     }
   }
 

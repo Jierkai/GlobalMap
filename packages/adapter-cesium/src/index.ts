@@ -49,8 +49,5 @@ export * from './primitive';
 export * from './material';
 export * from './picking';
 
-// 导出天气特效模块
-export * from './effect';
-
 // 导出所有类型定义
 export * from './types';

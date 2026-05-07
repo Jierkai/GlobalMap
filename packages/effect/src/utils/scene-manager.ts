@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium } from '../cesium-bridge';
 
 /**
  * @fileoverview 场景图元管理工具模块
@@ -25,14 +25,14 @@ import * as Cesium from 'cesium';
  */
 export class ScenePrimitiveManager {
   /** 已注册的图元集合 */
-  private _primitives: Cesium.Primitive[] = [];
+  private _primitives: Array<InstanceType<typeof Cesium.Primitive>> = [];
 
   /**
    * 注册一个图元
    *
    * @param primitive - 要注册的 Cesium 图元
    */
-  register(primitive: Cesium.Primitive): void {
+  register(primitive: InstanceType<typeof Cesium.Primitive>): void {
     this._primitives.push(primitive);
   }
 
@@ -41,7 +41,7 @@ export class ScenePrimitiveManager {
    *
    * @param scene - Cesium 场景对象
    */
-  addAll(scene: Cesium.Scene): void {
+  addAll(scene: InstanceType<typeof Cesium.Scene>): void {
     for (const primitive of this._primitives) {
       if (!primitive.isDestroyed() && !scene.primitives.contains(primitive)) {
         scene.primitives.add(primitive);
@@ -54,7 +54,7 @@ export class ScenePrimitiveManager {
    *
    * @param scene - Cesium 场景对象
    */
-  removeAll(scene: Cesium.Scene): void {
+  removeAll(scene: InstanceType<typeof Cesium.Scene>): void {
     for (const primitive of this._primitives) {
       if (!primitive.isDestroyed() && scene.primitives.contains(primitive)) {
         scene.primitives.remove(primitive);

@@ -119,6 +119,19 @@ importers:
         specifier: workspace:*
         version: link:../sketch
 
+  packages/effect:
+    dependencies:
+      '@cgx/adapter-cesium':
+        specifier: workspace:*
+        version: link:../adapter-cesium
+      cesium:
+        specifier: '>=1.120.0'
+        version: 1.139.0
+    devDependencies:
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@25.6.0)(@vitest/ui@2.1.9)(happy-dom@20.9.0)(jsdom@29.0.2)
+
   packages/feature:
     dependencies:
       '@cgx/adapter-cesium':
@@ -241,31 +254,6 @@ importers:
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
-
-  packages/std:
-    dependencies:
-      '@cgx/adapter-cesium':
-        specifier: workspace:*
-        version: link:../adapter-cesium
-      '@cgx/core':
-        specifier: workspace:*
-        version: link:../core
-      '@cgx/layer':
-        specifier: workspace:*
-        version: link:../layer
-      alien-signals:
-        specifier: ^3.1.2
-        version: 3.1.2
-    devDependencies:
-      cesium:
-        specifier: ^1.139.0
-        version: 1.139.0
-      jsdom:
-        specifier: ^29.0.2
-        version: 29.0.2
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@25.6.0)(@vitest/ui@2.1.9)(happy-dom@20.9.0)(jsdom@29.0.2)
 
   packages/ui:
     dependencies:
@@ -2006,10 +1994,6 @@ packages:
 
   postcss@8.5.10:
     resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
-  postcss@8.5.8:
-    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -4121,12 +4105,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.8:
-    dependencies:
-      nanoid: 3.3.11
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   prelude-ls@1.2.1: {}
 
   prettier@2.8.8: {}
@@ -4457,7 +4435,7 @@ snapshots:
   vite@5.4.21(@types/node@25.6.0):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.5.8
+      postcss: 8.5.10
       rollup: 4.59.0
     optionalDependencies:
       '@types/node': 25.6.0

@@ -5,14 +5,33 @@
  * @module effect
  */
 
+import type { CesiumViewerHandle } from '@cgx/adapter-cesium';
+import { WeatherEffectManagerImpl } from './manager';
+import type { WeatherEffectConfig } from './types';
+
+export * from './types';
+
+export function createWeatherEffectManager(viewer: CesiumViewerHandle): WeatherEffectManagerImpl {
+  const manager = new WeatherEffectManagerImpl();
+  manager.setViewer(viewer);
+  return manager;
+}
+
+export async function initWeatherEffects(
+  viewer: CesiumViewerHandle,
+  configs: WeatherEffectConfig[],
+): Promise<WeatherEffectManagerImpl> {
+  const manager = createWeatherEffectManager(viewer);
+  await manager.initFromConfigs(configs);
+  return manager;
+}
+
 // 天气效果类
 export { RainWeatherEffect } from './rain';
 export { SnowWeatherEffect } from './snow';
 export { FogWeatherEffect } from './fog';
 export { CloudWeatherEffect } from './cloud';
-export type { CloudConfig } from './cloud';
 export { LightningWeatherEffect } from './lightning';
-export type { LightningConfig } from './lightning';
 
 // 管理器
 export { WeatherEffectManagerImpl } from './manager';
