@@ -1,5 +1,6 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { CgxViewer, Capability } from '@cgx/core';
+import type { EngineAdapter } from '@cgx/core';
 import type { Layer } from '../layer/types.js';
 
 /**
@@ -19,8 +20,8 @@ export interface LayerManagerApi {
 
 interface InternalLayer extends Layer {
   _setManager?(m: LayerManagerApi | null): void;
-  _mount?(adapter: any): void;
-  _unmount?(adapter: any): void;
+  _mount?(adapter: EngineAdapter): void | Promise<void>;
+  _unmount?(adapter: EngineAdapter): void | Promise<void>;
   _emitMounted?(): void;
   _emitRemoved?(): void;
 }

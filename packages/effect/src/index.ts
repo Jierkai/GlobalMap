@@ -1,53 +1,40 @@
-/**
- * @fileoverview 天气特效模块入口
- * 导出所有天气效果类、管理器及组合组件
- *
- * @module effect
- */
+export type { WeatherEffectSpec } from '@cgx/core';
 
-import type { CesiumViewerHandle } from '@cgx/adapter-cesium';
-import { WeatherEffectManagerImpl } from './manager';
-import type { WeatherEffectConfig } from './types';
+export {
+  WeatherState,
+  WeatherType,
+  type CloudConfig,
+  type FogConfig,
+  type LightningConfig,
+  type RainConfig,
+  type SnowConfig,
+  type WeatherBaseConfig,
+  type WeatherConfigListener,
+  type WeatherEffectConfig,
+  type WeatherEffectInput,
+  type WeatherEffectLike,
+  type WeatherEffectManager,
+  type WeatherStateListener,
+  type WeatherTransitionOptions,
+} from './types.js';
 
-export * from './types';
+export { WeatherEffect } from './base.js';
+export {
+  WeatherEffectManagerImpl,
+  createWeatherEffectManager,
+  initWeatherEffects,
+} from './manager.js';
 
-export function createWeatherEffectManager(viewer: CesiumViewerHandle): WeatherEffectManagerImpl {
-  const manager = new WeatherEffectManagerImpl();
-  manager.setViewer(viewer);
-  return manager;
-}
+export { RainWeatherEffect } from './rain.js';
+export { SnowWeatherEffect } from './snow.js';
+export { FogWeatherEffect } from './fog.js';
+export { CloudWeatherEffect } from './cloud.js';
+export { LightningWeatherEffect } from './lightning.js';
 
-export async function initWeatherEffects(
-  viewer: CesiumViewerHandle,
-  configs: WeatherEffectConfig[],
-): Promise<WeatherEffectManagerImpl> {
-  const manager = createWeatherEffectManager(viewer);
-  await manager.initFromConfigs(configs);
-  return manager;
-}
+export { AnimationLoop } from './utils/animator.js';
 
-// 天气效果类
-export { RainWeatherEffect } from './rain';
-export { SnowWeatherEffect } from './snow';
-export { FogWeatherEffect } from './fog';
-export { CloudWeatherEffect } from './cloud';
-export { LightningWeatherEffect } from './lightning';
-
-// 管理器
-export { WeatherEffectManagerImpl } from './manager';
-
-// 可组合组件
-export { AnimationLoop } from './utils/animator';
-export { CameraBinder } from './utils/camera-binder';
-export { ScenePrimitiveManager } from './utils/scene-manager';
-export { ParticleBatch } from './utils/particle-batch';
-export type { ParticleBatchConfig } from './utils/particle-batch';
-export { GLSLPostProcess } from './utils/glsl-post-process';
-export type { GLSLPostProcessConfig } from './utils/glsl-post-process';
-
-// GLSL 着色器源码
-export { RAIN_FRAGMENT_SHADER } from './shaders/rain';
-export { SNOW_FRAGMENT_SHADER } from './shaders/snow';
-export { FOG_FRAGMENT_SHADER } from './shaders/fog';
-export { CLOUD_FRAGMENT_SHADER } from './shaders/cloud';
-export { LIGHTNING_FRAGMENT_SHADER } from './shaders/lightning';
+export { RAIN_FRAGMENT_SHADER } from './shaders/rain.js';
+export { SNOW_FRAGMENT_SHADER } from './shaders/snow.js';
+export { FOG_FRAGMENT_SHADER } from './shaders/fog.js';
+export { CLOUD_FRAGMENT_SHADER } from './shaders/cloud.js';
+export { LIGHTNING_FRAGMENT_SHADER } from './shaders/lightning.js';

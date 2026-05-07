@@ -1,6 +1,6 @@
 import { createBaseLayer, type Layer } from './types.js';
-import { LayerBridge } from '@cgx/adapter-cesium';
-import { effect } from 'alien-signals';
+import { effect } from '@cgx/reactive';
+import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
 
 /**
  * 地形图层配置选项
@@ -9,7 +9,7 @@ export interface TerrainLayerOptions {
   /** 图层唯一标识 */
   id?: string;
   /** 地形提供者 */
-  provider: any;
+  provider: unknown;
   /** 是否可见 */
   visible?: boolean;
 }
@@ -20,16 +20,14 @@ export interface TerrainLayerOptions {
 export interface TerrainLayer extends Layer {
   readonly type: 'terrain';
   /** 地形提供者 */
-  readonly provider: any;
+  readonly provider: unknown;
 }
 
 /**
  * 创建地形图层
  *
  * @description
- * 创建一个地形图层实例，支持挂载到 Cesium Viewer。
- * 挂载时会通过 LayerBridge 设置地形提供者，并通过 effect 
- * 实现可见性切换：可见时设置地形，不可见时恢复默认椭球地形。
+ * 创建一个地形图层领域对象。实际渲染由 EngineAdapter 消费 RenderSpec 完成。
  *
  * @param opts - 地形图层配置选项
  * @returns TerrainLayer 实例
@@ -38,37 +36,45 @@ export function createTerrainLayer(opts: TerrainLayerOptions): TerrainLayer {
   const base = createBaseLayer(opts.id || crypto.randomUUID(), 'terrain');
   if (opts.visible !== undefined) base.visible(opts.visible);
 
-  let isMounted = false;
+  let resolvedProvider: unknown = undefined;
+  let mountHandle: Updatable<LayerRenderSpec> | void;
   let effectDisposer: (() => void) | null = null;
-  let currentProvider: any = null;
+
+  const buildSpec = (): LayerRenderSpec => ({
+    id: base.id,
+    kind: 'terrain',
+    visible: base.visible(),
+    opacity: base.opacity(),
+    zIndex: base.zIndex(),
+    provider: resolvedProvider ?? opts.provider,
+  });
 
   return {
     ...base,
     type: 'terrain',
     provider: opts.provider,
-    async _mount(adapter: any) {
+    async _mount(adapter: EngineAdapter) {
       if (!adapter) return;
-      isMounted = true;
-      currentProvider = await opts.provider;
-      
+      resolvedProvider = await opts.provider;
+      mountHandle = adapter.mountLayer?.(buildSpec());
       effectDisposer = effect(() => {
-        if (!isMounted) return;
-        if (base.visible()) {
-          LayerBridge.setTerrainProvider(adapter, currentProvider);
-        } else {
-          LayerBridge.removeTerrainProvider(adapter);
-        }
+        mountHandle?.update?.(buildSpec());
       });
     },
-    _unmount(adapter: any) {
-      isMounted = false;
+    async _unmount(adapter: EngineAdapter) {
       if (effectDisposer) {
         effectDisposer();
         effectDisposer = null;
       }
-      if (adapter) {
-        LayerBridge.removeTerrainProvider(adapter);
-      }
+      await adapter.unmountLayer?.(mountHandle);
+      mountHandle?.dispose?.();
+      mountHandle = undefined;
+    },
+    toRenderSpec(): LayerRenderSpec {
+      return buildSpec();
+    },
+    raw() {
+      return mountHandle ?? null;
     }
   } as any;
 }

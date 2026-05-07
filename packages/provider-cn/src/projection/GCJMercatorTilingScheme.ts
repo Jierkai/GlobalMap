@@ -1,5 +1,4 @@
-// @ts-nocheck
-import * as Cesium from "cesium";
+import type { Cartesian2, Cartographic } from './types.js';
 
 const A_PARAM = 6378245.0;
 const EE_PARAM = 0.00669342162296594323;
@@ -26,71 +25,68 @@ function computeLatOffset(lng: number, lat: number): number {
 
 export function applyGcj02Offset(lng: number, lat: number): [number, number] {
   if (!isInsideChina(lng, lat)) return [lng, lat];
-  
+
   const dl = computeLngOffset(lng - 105.0, lat - 35.0);
   const dp = computeLatOffset(lng - 105.0, lat - 35.0);
-  
+
   const radLat = lat / 180.0 * Math.PI;
   const magic = Math.sin(radLat);
   const calMagic = 1 - EE_PARAM * magic * magic;
   const sqrtMagic = Math.sqrt(calMagic);
-  
+
   const outLng = lng + (dl * 180.0) / (A_PARAM / sqrtMagic * Math.cos(radLat) * Math.PI);
   const outLat = lat + (dp * 180.0) / ((A_PARAM * (1 - EE_PARAM)) / (calMagic * sqrtMagic) * Math.PI);
-  
+
   return [outLng, outLat];
 }
 
 export function revertGcj02Offset(lng: number, lat: number): [number, number] {
   if (!isInsideChina(lng, lat)) return [lng, lat];
-  
+
   const dl = computeLngOffset(lng - 105.0, lat - 35.0);
   const dp = computeLatOffset(lng - 105.0, lat - 35.0);
-  
+
   const radLat = lat / 180.0 * Math.PI;
   const magic = Math.sin(radLat);
   const calMagic = 1 - EE_PARAM * magic * magic;
   const sqrtMagic = Math.sqrt(calMagic);
-  
+
   const outLng = lng - (dl * 180.0) / (A_PARAM / sqrtMagic * Math.cos(radLat) * Math.PI);
   const outLat = lat - (dp * 180.0) / ((A_PARAM * (1 - EE_PARAM)) / (calMagic * sqrtMagic) * Math.PI);
-  
+
   return [outLng, outLat];
 }
 
-export class Gcj02TilingScheme extends Cesium.WebMercatorTilingScheme {
-  constructor() {
-    super();
-    
-    const internalProj = new Cesium.WebMercatorProjection();
-    const currentProj = this.projection as any;
-    
-    currentProj.project = (carto: Cesium.Cartographic): Cesium.Cartesian3 => {
-      const lngDeg = Cesium.Math.toDegrees(carto.longitude);
-      const latDeg = Cesium.Math.toDegrees(carto.latitude);
-      
+export class Gcj02TilingScheme {
+  readonly projection = {
+    project: (carto: Cartographic): { x: number; y: number; z: number } => {
+      const lngDeg = carto.longitude * 180 / Math.PI;
+      const latDeg = carto.latitude * 180 / Math.PI;
       const [shiftedLng, shiftedLat] = applyGcj02Offset(lngDeg, latDeg);
-      
-      const shiftedCarto = new Cesium.Cartographic(
-        Cesium.Math.toRadians(shiftedLng),
-        Cesium.Math.toRadians(shiftedLat)
-      );
-      
-      return internalProj.project(shiftedCarto);
-    };
-    
-    currentProj.unproject = (cartesian: Cesium.Cartesian3): Cesium.Cartographic => {
-      const unproj = internalProj.unproject(cartesian);
-      
-      const lngDeg = Cesium.Math.toDegrees(unproj.longitude);
-      const latDeg = Cesium.Math.toDegrees(unproj.latitude);
-      
-      const [origLng, origLat] = revertGcj02Offset(lngDeg, latDeg);
-      
-      return new Cesium.Cartographic(
-        Cesium.Math.toRadians(origLng),
-        Cesium.Math.toRadians(origLat)
-      );
-    };
+      return { x: shiftedLng, y: shiftedLat, z: carto.height ?? 0 };
+    },
+    unproject: (point: { x: number; y: number; z?: number }): Cartographic => {
+      const [origLng, origLat] = revertGcj02Offset(point.x, point.y);
+      return {
+        longitude: origLng * Math.PI / 180,
+        latitude: origLat * Math.PI / 180,
+        height: point.z ?? 0,
+      };
+    },
+  };
+
+  positionToTileXY(position: Cartographic, level: number, result?: Cartesian2): Cartesian2 | undefined {
+    const projected = this.projection.project(position);
+    const tileScale = Math.pow(2, level + 1);
+    const tileX = Math.floor(projected.x / tileScale);
+    const tileY = -Math.floor(projected.y / tileScale);
+
+    if (!result) {
+      return { x: tileX, y: tileY };
+    }
+
+    result.x = tileX;
+    result.y = tileY;
+    return result;
   }
 }

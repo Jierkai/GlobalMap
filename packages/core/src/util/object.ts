@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * 执行对象的深度克隆
  * 使用原生 structuredClone，如不支持则回退为 JSON 序列化
@@ -19,22 +18,18 @@ export function deepClone<T>(entity: T): T {
  * @param extension 需要合并的扩展属性
  * @returns 合并生成的新对象
  */
-export function deepMerge<T extends object>(base: T, extension: Partial<T>): T {
-  const output = { ...base };
-  for (const prop in extension) {
-    if (Object.prototype.hasOwnProperty.call(extension, prop)) {
-      const extVal = extension[prop];
-      const baseVal = output[prop];
-      
-      const isExtObj = extVal && typeof extVal === 'object' && !Array.isArray(extVal);
-      const isBaseObj = baseVal && typeof baseVal === 'object' && !Array.isArray(baseVal);
-      
-      if (isExtObj && isBaseObj) {
-        output[prop] = deepMerge(baseVal as T[Extract<keyof T, string>], extVal as any);
-      } else {
-        output[prop] = extVal as any;
-      }
+export function deepMerge<T extends Record<string, unknown>>(base: T, extension: Partial<T>): T {
+  const output: Record<string, unknown> = { ...base };
+  for (const [prop, extVal] of Object.entries(extension)) {
+    const baseVal = output[prop];
+    const isExtObj = extVal !== null && typeof extVal === 'object' && !Array.isArray(extVal);
+    const isBaseObj = baseVal !== null && typeof baseVal === 'object' && !Array.isArray(baseVal);
+
+    if (isExtObj && isBaseObj) {
+      output[prop] = deepMerge(baseVal as Record<string, unknown>, extVal as Record<string, unknown>);
+    } else {
+      output[prop] = extVal;
     }
   }
-  return output;
+  return output as T;
 }

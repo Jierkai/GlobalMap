@@ -36,8 +36,7 @@
   "dependencies": {
     "@cgx/core": "workspace:*",
     "@cgx/layer": "workspace:*",
-    "@cgx/reactive": "workspace:*",
-    "alien-signals": "^3.1.2"
+    "@cgx/reactive": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.9",

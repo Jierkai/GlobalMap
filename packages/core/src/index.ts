@@ -5,6 +5,17 @@ export { CgxError, ErrorCodes } from './errors/CgxError.js';
 export { TypedEmitter, type Emitter, type Off } from './typed-events/Emitter.js';
 export { defineFsm, type FsmInstance, type FsmDefinition, type FsmTransition, type FsmHooks } from './fsm/Fsm.js';
 export {
+  type Disposable,
+  type Updatable,
+  type ScreenPoint,
+  type LngLat,
+  type CartesianPoint3D,
+  type LayerRenderSpec,
+  type FeatureRenderSpec,
+  type WeatherEffectSpec,
+  type EngineAdapter,
+} from './adapter/EngineAdapter.js';
+export {
   type Point2D,
   type Constraint,
   type ConstraintContext,

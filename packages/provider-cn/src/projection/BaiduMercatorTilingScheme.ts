@@ -1,6 +1,5 @@
-// @ts-nocheck
-import * as Cesium from "cesium";
-import { projectToBaiduPlane, unprojectFromBaiduPlane } from './BaiduMercatorProjection';
+import { projectToBaiduPlane, unprojectFromBaiduPlane } from './BaiduMercatorProjection.js';
+import type { Cartesian2, Cartographic, Rectangle } from './types.js';
 
 export interface BaiduTilingSchemeConfig {
   resolutions: number[];
@@ -8,89 +7,88 @@ export interface BaiduTilingSchemeConfig {
   originY?: number;
 }
 
-export class BaiduMapTilingScheme extends Cesium.WebMercatorTilingScheme {
+function degreesToRadians(deg: number): number {
+  return deg * Math.PI / 180;
+}
+
+function radiansToDegrees(rad: number): number {
+  return rad * 180 / Math.PI;
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+export class BaiduMapTilingScheme {
   private readonly _customResolutions: number[];
+  private readonly _originX: number;
+  private readonly _originY: number;
+  readonly projection = {
+    project: (carto: Cartographic): { x: number; y: number; z: number } => {
+      const lng = clamp(radiansToDegrees(carto.longitude), -180, 180);
+      const lat = clamp(radiansToDegrees(carto.latitude), -85.05112877980659, 85.05112877980659);
+      const pt = projectToBaiduPlane({ lng, lat });
+      return { x: pt.x, y: pt.y, z: carto.height ?? 0 };
+    },
+    unproject: (cartesian: { x: number; y: number; z?: number }): Cartographic => {
+      const coord = unprojectFromBaiduPlane({ x: cartesian.x, y: cartesian.y });
+      return {
+        longitude: degreesToRadians(coord.lng),
+        latitude: degreesToRadians(coord.lat),
+        height: cartesian.z ?? 0,
+      };
+    },
+  };
 
   constructor(config: BaiduTilingSchemeConfig) {
-    super();
     this._customResolutions = config.resolutions || [];
-    
-    const projection = this.projection as any;
-    
-    // 覆写底层投影过程以注入百度坐标转换
-    projection.project = (carto: Cesium.Cartographic): Cesium.Cartesian3 => {
-      let lng = Cesium.Math.toDegrees(carto.longitude);
-      let lat = Cesium.Math.toDegrees(carto.latitude);
-      
-      lng = Math.max(-180, Math.min(180, lng));
-      lat = Math.max(-85.05112877980659, Math.min(85.05112877980659, lat));
-      
-      const pt = projectToBaiduPlane({ lng, lat });
-      return new Cesium.Cartesian3(pt.x, pt.y, 0);
-    };
-    
-    projection.unproject = (cartesian: Cesium.Cartesian3): Cesium.Cartographic => {
-      const coord = unprojectFromBaiduPlane({ x: cartesian.x, y: cartesian.y });
-      return new Cesium.Cartographic(
-        Cesium.Math.toRadians(coord.lng),
-        Cesium.Math.toRadians(coord.lat),
-        0
-      );
-    };
+    this._originX = config.originX ?? 0;
+    this._originY = config.originY ?? 0;
   }
   
-  override tileXYToNativeRectangle(
+  tileXYToNativeRectangle(
     x: number,
     y: number,
     level: number,
-    result?: Cesium.Rectangle
-  ): Cesium.Rectangle {
+    result?: Rectangle,
+  ): Rectangle {
     const res = this._customResolutions[level];
-    if (!res) return Cesium.Rectangle.MAX_VALUE;
+    if (!res) return { west: 0, south: 0, east: 0, north: 0 };
     
-    const w = x * res;
-    const e = (x + 1) * res;
+    const w = this._originX + x * res;
+    const e = this._originX + (x + 1) * res;
     const n = ((y = -y) + 1) * res;
     const s = y * res;
     
-    if (!Cesium.defined(result)) {
-      return new Cesium.Rectangle(w, s, e, n);
+    if (!result) {
+      return { west: w, south: this._originY + s, east: e, north: this._originY + n };
     }
     
-    result!.west = w;
-    result!.south = s;
-    result!.east = e;
-    result!.north = n;
-    return result!;
+    result.west = w;
+    result.south = this._originY + s;
+    result.east = e;
+    result.north = this._originY + n;
+    return result;
   }
 
-  override positionToTileXY(
-    position: Cesium.Cartographic,
+  positionToTileXY(
+    position: Cartographic,
     level: number,
-    result?: Cesium.Cartesian2
-  ): Cesium.Cartesian2 | undefined {
-    const rect = (this as any)._rectangle;
-    if (!Cesium.Rectangle.contains(rect, position)) {
-      return undefined;
-    }
-    
+    result?: Cartesian2,
+  ): Cartesian2 | undefined {
     const p = this.projection.project(position);
-    if (!Cesium.defined(p)) {
-      return undefined;
-    }
-    
     const res = this._customResolutions[level];
     if (!res) return undefined;
     
-    const tileX = Math.floor(p.x / res);
-    const tileY = -Math.floor(p.y / res);
+    const tileX = Math.floor((p.x - this._originX) / res);
+    const tileY = -Math.floor((p.y - this._originY) / res);
     
-    if (!Cesium.defined(result)) {
-      return new Cesium.Cartesian2(tileX, tileY);
+    if (!result) {
+      return { x: tileX, y: tileY };
     }
     
-    result!.x = tileX;
-    result!.y = tileY;
-    return result!;
+    result.x = tileX;
+    result.y = tileY;
+    return result;
   }
 }

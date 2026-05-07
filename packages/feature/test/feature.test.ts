@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effect } from 'alien-signals';
+import { effect } from '@cgx/reactive';
 import { createFeature } from '../src/kinds/Feature.js';
 import { toGeoJSON, fromGeoJSON } from '../src/geojson/index.js';
 

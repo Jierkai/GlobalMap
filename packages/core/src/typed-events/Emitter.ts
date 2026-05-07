@@ -5,7 +5,7 @@ export type Off = () => void;
  * 强类型事件派发器接口。
  * @template TEvents 映射事件名称到其携带参数类型的字典。
  */
-export interface Emitter<TEvents extends Record<string, unknown>> {
+export interface Emitter<TEvents extends object> {
   /** 订阅一个事件。 */
   on<K extends keyof TEvents>(event: K, handler: (payload: TEvents[K]) => void): Off;
   /** 订阅一个仅触发一次的事件。 */
@@ -21,7 +21,7 @@ export interface Emitter<TEvents extends Record<string, unknown>> {
  * 能够在单个监听器发生异常时隔离错误，避免阻塞其它监听器的执行。
  * @template TEvents 映射事件名称到其携带参数类型的字典。
  */
-export class TypedEmitter<TEvents extends Record<string, unknown>> implements Emitter<TEvents> {
+export class TypedEmitter<TEvents extends object> implements Emitter<TEvents> {
   private listeners: Map<keyof TEvents, Set<(payload: unknown) => void>> = new Map();
 
   on<K extends keyof TEvents>(event: K, handler: (payload: TEvents[K]) => void): Off {

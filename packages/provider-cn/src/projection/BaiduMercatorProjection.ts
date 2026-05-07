@@ -1,9 +1,3 @@
-// @ts-nocheck
-/**
- * 百度地图特有墨卡托坐标体系投影转换
- * 提供经纬度与投影平面坐标的双向映射运算
- */
-
 export interface Point2D {
   x: number;
   y: number;
@@ -36,11 +30,11 @@ const FORWARD_COEFFS = [
 ];
 
 function applyPolynomial(coord: LngLatCoord, coeffs: number[]): LngLatCoord {
-  let pX = coeffs[0] + coeffs[1] * Math.abs(coord.lng);
-  const relY = Math.abs(coord.lat) / coeffs[9];
-  let pY = coeffs[2] + coeffs[3] * relY + coeffs[4] * relY * relY +
-           coeffs[5] * Math.pow(relY, 3) + coeffs[6] * Math.pow(relY, 4) +
-           coeffs[7] * Math.pow(relY, 5) + coeffs[8] * Math.pow(relY, 6);
+  let pX = coeffs[0]! + coeffs[1]! * Math.abs(coord.lng);
+  const relY = Math.abs(coord.lat) / coeffs[9]!;
+  let pY = coeffs[2]! + coeffs[3]! * relY + coeffs[4]! * relY * relY +
+           coeffs[5]! * Math.pow(relY, 3) + coeffs[6]! * Math.pow(relY, 4) +
+           coeffs[7]! * Math.pow(relY, 5) + coeffs[8]! * Math.pow(relY, 6);
 
   pX *= coord.lng < 0 ? -1 : 1;
   pY *= coord.lat < 0 ? -1 : 1;
@@ -48,7 +42,6 @@ function applyPolynomial(coord: LngLatCoord, coeffs: number[]): LngLatCoord {
   return { lng: pX, lat: pY };
 }
 
-/** 规范化经度到 [-180, 180] */
 function wrapLongitude(val: number): number {
   let res = val;
   while (res > 180) res -= 360;
@@ -56,16 +49,10 @@ function wrapLongitude(val: number): number {
   return res;
 }
 
-/** 限制纬度在 [-74, 74] （针对百度） */
 function clampLatitude(val: number): number {
   return Math.max(-74, Math.min(74, val));
 }
 
-/**
- * 经纬度坐标转百度平面投影坐标
- * @param coord 经纬度
- * @returns 投影坐标
- */
 export function projectToBaiduPlane(coord: LngLatCoord): Point2D {
   if (coord.lng > 180 || coord.lng < -180 || coord.lat > 90 || coord.lat < -90) {
     return { x: coord.lng, y: coord.lat };
@@ -77,37 +64,32 @@ export function projectToBaiduPlane(coord: LngLatCoord): Point2D {
 
   let activeCoeffs: number[] | undefined;
   for (let i = 0; i < DEGREE_THRESHOLDS.length; i++) {
-    if (input.lat >= DEGREE_THRESHOLDS[i]) {
-      activeCoeffs = FORWARD_COEFFS[i];
+    if (input.lat >= DEGREE_THRESHOLDS[i]!) {
+      activeCoeffs = FORWARD_COEFFS[i]!;
       break;
     }
   }
 
   if (!activeCoeffs) {
     for (let i = 0; i < DEGREE_THRESHOLDS.length; i++) {
-      if (input.lat <= -DEGREE_THRESHOLDS[i]) {
-        activeCoeffs = FORWARD_COEFFS[i];
+      if (input.lat <= -DEGREE_THRESHOLDS[i]!) {
+        activeCoeffs = FORWARD_COEFFS[i]!;
         break;
       }
     }
   }
 
-  const res = applyPolynomial(input, activeCoeffs!);
+  const res = applyPolynomial(input, activeCoeffs ?? FORWARD_COEFFS[0]!);
   return { x: res.lng, y: res.lat };
 }
 
-/**
- * 百度平面投影坐标逆转为经纬度
- * @param pt 投影点
- * @returns 经纬度
- */
 export function unprojectFromBaiduPlane(pt: Point2D): LngLatCoord {
   const absY = Math.abs(pt.y);
-  let activeCoeffs = INVERSE_COEFFS[0];
-  
+  let activeCoeffs = INVERSE_COEFFS[0]!;
+
   for (let i = 0; i < MERCATOR_THRESHOLDS.length; i++) {
-    if (absY >= MERCATOR_THRESHOLDS[i]) {
-      activeCoeffs = INVERSE_COEFFS[i];
+    if (absY >= MERCATOR_THRESHOLDS[i]!) {
+      activeCoeffs = INVERSE_COEFFS[i]!;
       break;
     }
   }

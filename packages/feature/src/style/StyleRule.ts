@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 
 /**
  * 带有条件判断的局部样式规则。

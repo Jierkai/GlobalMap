@@ -1,7 +1,8 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import { TypedEmitter, type Off } from '../typed-events/Emitter.js';
 import { CgxError, ErrorCodes } from '../errors/CgxError.js';
 import type { Capability } from '../capability/Capability.js';
+import type { EngineAdapter } from '../adapter/EngineAdapter.js';
 
 /**
  * 创建 CgxViewer 实例的配置项。
@@ -10,7 +11,7 @@ export interface CgxViewerOptions {
   /** 视图将要挂载的容器元素或其 ID。 */
   container: string | HTMLElement;
   /** L1 层适配器，负责将调用委派给底层引擎（如 Cesium）。 */
-  adapter: { initialize?(c: string | HTMLElement): Promise<void> | void; dispose?(): Promise<void> | void } | Record<string, unknown>; // L1 Adapter
+  adapter: EngineAdapter;
 }
 
 /** 表示视图生命周期的状态。 */
@@ -40,12 +41,14 @@ export interface CgxViewer {
   /** 持有当前生命周期状态的响应式信号。 */
   readonly status: ViewerStatusSignal;
   /** L1 层适配器实例，如 Cesium 句柄。 */
-  readonly adapter: any;
+  readonly adapter: EngineAdapter;
   
   /** 初始化视图及其适配器。当完全准备就绪时决议 Promise。 */
   ready(): Promise<void>;
   /** 幂等性地销毁视图、适配器及所有已安装的能力插件。 */
   dispose(): Promise<void>;
+  /** 返回底层引擎对象，若适配器未提供则返回 undefined。 */
+  unsafeNative(): unknown;
   
   /** 订阅一个强类型事件。 */
   on<K extends keyof TypedEvents>(event: K, handler: (payload: TypedEvents[K]) => void): Off;
@@ -93,9 +96,7 @@ export function createCgxViewer(opts: CgxViewerOptions): CgxViewer {
 
       readyPromise = (async () => {
         try {
-          if (opts.adapter && typeof (opts.adapter as any).initialize === 'function') {
-            await (opts.adapter as any).initialize(opts.container);
-          }
+          await opts.adapter.initialize?.(opts.container);
           status('ready');
           emitter.emit('attach', { viewer });
         } catch (err) {
@@ -125,12 +126,10 @@ export function createCgxViewer(opts: CgxViewerOptions): CgxViewer {
       }
       installedCapabilities.clear();
 
-      if (opts.adapter && typeof (opts.adapter as any).dispose === 'function') {
-        try {
-          await (opts.adapter as any).dispose();
-        } catch (e) {
-          console.error('Error disposing L1 adapter:', e);
-        }
+      try {
+        await opts.adapter.dispose?.();
+      } catch (e) {
+        console.error('Error disposing L1 adapter:', e);
       }
 
       status('disposed');
@@ -141,6 +140,9 @@ export function createCgxViewer(opts: CgxViewerOptions): CgxViewer {
     on: emitter.on.bind(emitter),
     once: emitter.once.bind(emitter),
     off: emitter.off.bind(emitter),
+    unsafeNative(): unknown {
+      return opts.adapter.unsafeNative?.();
+    },
 
     use<T>(capability: Capability<T>): T {
       if (installedCapabilities.has(capability.id)) {

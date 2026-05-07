@@ -46,6 +46,7 @@ export { ScreenSpaceEmitter } from './event';
 export * from './provider';
 export * from './layer';
 export * from './primitive';
+export * from './entity';
 export * from './material';
 export * from './picking';
 

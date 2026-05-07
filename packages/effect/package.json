@@ -78,26 +78,6 @@
       "development": "./src/utils/animator.ts",
       "import": "./dist/utils/animator.js",
       "types": "./dist/utils/animator.d.ts"
-    },
-    "./utils/camera-binder": {
-      "development": "./src/utils/camera-binder.ts",
-      "import": "./dist/utils/camera-binder.js",
-      "types": "./dist/utils/camera-binder.d.ts"
-    },
-    "./utils/glsl-post-process": {
-      "development": "./src/utils/glsl-post-process.ts",
-      "import": "./dist/utils/glsl-post-process.js",
-      "types": "./dist/utils/glsl-post-process.d.ts"
-    },
-    "./utils/particle-batch": {
-      "development": "./src/utils/particle-batch.ts",
-      "import": "./dist/utils/particle-batch.js",
-      "types": "./dist/utils/particle-batch.d.ts"
-    },
-    "./utils/scene-manager": {
-      "development": "./src/utils/scene-manager.ts",
-      "import": "./dist/utils/scene-manager.js",
-      "types": "./dist/utils/scene-manager.d.ts"
     }
   },
   "scripts": {
@@ -106,7 +86,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cgx/adapter-cesium": "workspace:*"
+    "@cgx/core": "workspace:*",
+    "@cgx/reactive": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.9"

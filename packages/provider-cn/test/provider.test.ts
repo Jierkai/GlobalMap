@@ -7,18 +7,18 @@ describe('CN Providers', () => {
   it('should create Baidu provider with ready signal', () => {
     const provider = createBaiduProvider({ style: 'dark' });
     expect(provider.ready()).toBe(true);
-    expect(provider.toCesium()).toEqual({ type: 'baidu', style: 'dark' });
+    expect(provider.toRenderSpec()).toEqual({ type: 'baidu', style: 'dark' });
   });
 
   it('should create Tianditu provider with ready signal', () => {
     const provider = createTiandituProvider({ token: '123', type: 'img' });
     expect(provider.ready()).toBe(true);
-    expect(provider.toCesium()).toEqual({ token: '123', type: 'img' });
+    expect(provider.toRenderSpec()).toEqual({ token: '123', type: 'img' });
   });
 
   it('should create Gaode provider with ready signal', () => {
     const provider = createGaodeProvider({ style: 'vec' });
     expect(provider.ready()).toBe(true);
-    expect(provider.toCesium()).toEqual({ type: 'gaode', style: 'vec' });
+    expect(provider.toRenderSpec()).toEqual({ type: 'gaode', style: 'vec' });
   });
 });

@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { ImageryProvider } from './ImageryProvider.js';
 
 export interface XyzProviderOptions {
@@ -9,7 +9,7 @@ export function createXyzProvider(opts: XyzProviderOptions): ImageryProvider {
   const ready = signal(true);
   return {
     ready,
-    toCesium() {
+    toRenderSpec() {
       return { type: 'xyz', url: opts.url };
     }
   };

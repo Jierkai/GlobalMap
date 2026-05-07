@@ -3,7 +3,7 @@ import { createCgxViewer } from '@cgx/core';
 import { Layers } from '../src/manager/LayerManager.js';
 import { createImageryLayer } from '../src/layer/ImageryLayer.js';
 import { createXyzProvider } from '../src/provider/xyz.js';
-import { effect } from 'alien-signals';
+import { effect } from '@cgx/reactive';
 
 describe('LayerManager and Layers', () => {
   it('should manage layer addition and removal', async () => {

@@ -1,7 +1,7 @@
 import { createBaseLayer, type Layer } from './types.js';
 import type { ImageryProvider } from '../provider/ImageryProvider.js';
-import { LayerBridge } from '@cgx/adapter-cesium';
-import { effect } from 'alien-signals';
+import { effect } from '@cgx/reactive';
+import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
 
 /**
  * 影像图层配置选项
@@ -32,9 +32,7 @@ export interface ImageryLayer extends Layer {
  * 创建影像图层
  *
  * @description
- * 创建一个影像图层实例，支持挂载到 Cesium Viewer。
- * 挂载时会通过 LayerBridge 创建原生影像图层，并通过 effect 
- * 将可见性和透明度属性响应式同步到原生图层。
+ * 创建一个影像图层领域对象。实际渲染由 EngineAdapter 消费 RenderSpec 完成。
  *
  * @param opts - 影像图层配置选项
  * @returns ImageryLayer 实例
@@ -45,34 +43,47 @@ export function createImageryLayer(opts: ImageryLayerOptions): ImageryLayer {
   if (opts.opacity !== undefined) base.opacity(opts.opacity);
   if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
 
-  let nativeLayer: any = null;
+  let resolvedProvider: ImageryProvider | null = null;
+  let mountHandle: Updatable<LayerRenderSpec> | void;
   let effectDisposer: (() => void) | null = null;
 
-  return {
+  const buildSpec = (): LayerRenderSpec => ({
+    id: base.id,
+    kind: 'imagery',
+    visible: base.visible(),
+    opacity: base.opacity(),
+    zIndex: base.zIndex(),
+    provider: resolvedProvider?.toRenderSpec() ?? null,
+  });
+
+  const layer = {
     ...base,
     type: 'imagery',
     provider: opts.provider,
-    async _mount(adapter: any) {
+    async _mount(adapter: EngineAdapter) {
       if (!adapter) return;
-      const provider = await opts.provider;
-      nativeLayer = LayerBridge.addImageryLayer(adapter, provider as any);
-      
-      if (nativeLayer) {
-        effectDisposer = effect(() => {
-          nativeLayer.show = base.visible();
-          nativeLayer.alpha = base.opacity();
-        });
-      }
+      resolvedProvider = await opts.provider;
+      mountHandle = adapter.mountLayer?.(buildSpec());
+      effectDisposer = effect(() => {
+        mountHandle?.update?.(buildSpec());
+      });
     },
-    _unmount(adapter: any) {
+    async _unmount(adapter: EngineAdapter) {
       if (effectDisposer) {
         effectDisposer();
         effectDisposer = null;
       }
-      if (nativeLayer && adapter) {
-        LayerBridge.removeImageryLayer(adapter, nativeLayer);
-        nativeLayer = null;
-      }
+      await adapter.unmountLayer?.(mountHandle);
+      mountHandle?.dispose?.();
+      mountHandle = undefined;
+    },
+    toRenderSpec(): LayerRenderSpec {
+      return buildSpec();
+    },
+    raw() {
+      return mountHandle ?? null;
     }
-  } as any;
+  };
+
+  return layer as ImageryLayer;
 }

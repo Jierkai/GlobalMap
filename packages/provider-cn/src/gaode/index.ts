@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { ImageryProvider } from '@cgx/layer';
 
 export interface GaodeProviderOptions {
@@ -9,7 +9,7 @@ export function createGaodeProvider(opts: GaodeProviderOptions = {}): ImageryPro
   const ready = signal(true);
   return {
     ready,
-    toCesium() {
+    toRenderSpec() {
       return { type: 'gaode', ...opts };
     }
   };

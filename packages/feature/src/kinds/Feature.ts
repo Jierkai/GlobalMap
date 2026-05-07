@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import { createStyleSystem, type StyleSystem } from '../style/StyleRule.js';
 import type { 
   Identified, Positionable, MultiPositionable, Styleable,
@@ -6,6 +6,7 @@ import type {
 } from '../capabilities/types.js';
 import type { LodConfig } from '../lod/types.js';
 import { toGeoJSON } from '../geojson/index.js';
+import type { FeatureRenderSpec } from '@cgx/core';
 
 /** Cgx 框架内支持的所有图形要素类别。 */
 export type FeatureKind = 'point' | 'polyline' | 'polygon' | 'billboard' | 'label' | 'model';
@@ -22,8 +23,10 @@ export interface BaseFeature<K extends FeatureKind> extends Identified, Styleabl
   readonly kind: K;
   /** 控制该图形要素可见性层级的 LOD 配置。 */
   readonly lod: LodConfig;
-  /** 暴露访问底层引擎对象 (如 Cesium.Entity) 的逃生舱，请谨慎使用。 */
+  /** 暴露访问底层引擎对象的逃生舱，请谨慎使用。 */
   readonly raw: () => unknown;
+  /** 输出给底层引擎适配器的渲染描述。 */
+  toRenderSpec(): FeatureRenderSpec;
 }
 
 /** 
@@ -79,10 +82,27 @@ export function createFeature<K extends FeatureKind>(kind: K, opts: FeatureOptio
     properties,
     style,
     lod,
-    raw: () => null
+    raw: () => undefined
   } as unknown as Record<string, unknown>;
 
   base.toGeoJSON = () => toGeoJSON(base as unknown as Feature<FeatureKind>);
+  base.toRenderSpec = () => {
+    const spec: Record<string, unknown> = {
+      id,
+      kind,
+      name: opts.name,
+      properties,
+    };
+
+    if ('position' in base) {
+      spec.position = (base.position as () => unknown)();
+    }
+    if ('positions' in base) {
+      spec.positions = (base.positions as () => unknown[])();
+    }
+
+    return spec as unknown as FeatureRenderSpec;
+  };
 
   if (opts.position !== undefined || ['point', 'billboard', 'label', 'model'].includes(kind)) {
     base.position = signal(opts.position ?? null);

@@ -3,89 +3,154 @@ import { CesiumViewerHandle } from './types';
 import { _getInternalViewer } from './viewer';
 
 /**
- * 图元桥接器
+ * 原语生命周期选项
+ */
+export interface PrimitiveLifecycleOptions {
+  /** 是否在 `init()` 后自动挂载到场景中，默认 true */
+  autoAttach?: boolean;
+}
+
+/**
+ * 原语基类
  *
  * @description
- * 封装 Cesium Entity 的增删改操作，提供统一的图元管理接口。
- * 通过 CesiumViewerHandle 获取内部 Viewer 实例进行操作。
+ * 提供 Cesium `Primitive` 的通用生命周期管理：
+ * - 延迟创建
+ * - 挂载 / 卸载
+ * - 销毁
  */
-export class EntityBridge {
-  /**
-   * 向场景中添加一个新的 Entity 图元
-   *
-   * @param handle - Cesium Viewer 句柄
-   * @param options - Cesium Entity 构造选项
-   * @returns 成功返回创建的 Entity，失败返回 undefined
-   */
-  static addEntity(handle: CesiumViewerHandle, options: Cesium.Entity.ConstructorOptions): Cesium.Entity | undefined {
-    const viewer = _getInternalViewer(handle);
-    if (!viewer) return undefined;
-    return viewer.entities.add(options);
+export abstract class PrimitiveBase<TPrimitive extends Cesium.Primitive = Cesium.Primitive> {
+  private _primitive: TPrimitive | null = null;
+  private _attached = false;
+  private readonly _autoAttach: boolean;
+
+  constructor(protected readonly viewer: CesiumViewerHandle, options: PrimitiveLifecycleOptions = {}) {
+    this._autoAttach = options.autoAttach ?? true;
   }
 
   /**
-   * 从场景中移除指定的 Entity
-   *
-   * @param handle - Cesium Viewer 句柄
-   * @param entity - 要移除的 Entity 实例
-   * @returns 移除成功返回 true，失败返回 false
+   * 获取当前原语实例
    */
-  static removeEntity(handle: CesiumViewerHandle, entity: Cesium.Entity): boolean {
-    const viewer = _getInternalViewer(handle);
-    if (!viewer) return false;
-    return viewer.entities.remove(entity);
+  get primitive(): TPrimitive | null {
+    return this._primitive;
   }
 
   /**
-   * 更新 Entity 的属性
-   *
-   * @description
-   * 支持部分更新 Entity 的可选属性，包括 position、point、
-   * polyline、polygon、model 和 properties。
-   * 对于已存在的图形属性，会进行增量合并更新。
-   *
-   * @param entity - 要更新的 Entity 实例
-   * @param options - 需要更新的属性选项
+   * 是否已完成初始化
    */
-  static updateEntity(entity: Cesium.Entity, options: Partial<Cesium.Entity.ConstructorOptions>): void {
-    if (options.position) {
-      entity.position = options.position as any;
-    }
-    if (options.point) {
-      this.updateProperty(entity, 'point', options.point);
-    }
-    if (options.polyline) {
-      this.updateProperty(entity, 'polyline', options.polyline);
-    }
-    if (options.polygon) {
-      this.updateProperty(entity, 'polygon', options.polygon);
-    }
-    if (options.model) {
-      this.updateProperty(entity, 'model', options.model);
-    }
-    if (options.properties) {
-      entity.properties = options.properties as any;
-    }
+  get isInitialized(): boolean {
+    return this._primitive !== null;
   }
 
   /**
-   * 更新或设置 Entity 的单个属性
-   *
-   * @description
-   * 如果属性不存在，直接赋值；如果已存在，则进行增量合并。
-   *
-   * @param entity - Cesium Entity 实例
-   * @param key - 属性名称
-   * @param value - 属性值
+   * 是否已挂载到场景
    */
-  private static updateProperty(entity: Cesium.Entity, key: string, value: any) {
-    if (!entity[key as keyof Cesium.Entity]) {
-      (entity as any)[key] = value;
-    } else {
-      const prop = entity[key as keyof Cesium.Entity] as any;
-      Object.keys(value).forEach((k) => {
-        prop[k] = value[k];
-      });
+  get isAttached(): boolean {
+    return this._attached;
+  }
+
+  /**
+   * 初始化原语
+   */
+  async init(): Promise<TPrimitive> {
+    if (this._primitive) {
+      return this._primitive;
     }
+
+    const primitive = await this._createPrimitive();
+    this._primitive = primitive;
+    this._onInit(primitive);
+
+    if (this._autoAttach) {
+      this.attach();
+    }
+
+    return primitive;
+  }
+
+  /**
+   * 将原语挂载到场景
+   */
+  attach(): boolean {
+    const viewer = _getInternalViewer(this.viewer);
+    const primitive = this._primitive;
+    if (!viewer || !primitive) return false;
+    if (this._attached) return true;
+
+    if (!viewer.scene.primitives.contains(primitive)) {
+      viewer.scene.primitives.add(primitive);
+    }
+    this._attached = true;
+    this._onAttach(viewer, primitive);
+    return true;
+  }
+
+  /**
+   * 从场景卸载原语
+   */
+  detach(): boolean {
+    const viewer = _getInternalViewer(this.viewer);
+    const primitive = this._primitive;
+    if (!viewer || !primitive || !this._attached) return false;
+
+    if (viewer.scene.primitives.contains(primitive)) {
+      viewer.scene.primitives.remove(primitive);
+    }
+    this._attached = false;
+    this._onDetach(viewer, primitive);
+    return true;
+  }
+
+  /**
+   * 销毁原语并释放资源
+   */
+  dispose(): void {
+    const primitive = this._primitive;
+    if (!primitive) return;
+
+    if (this._attached) {
+      this.detach();
+    }
+
+    this._onDispose(primitive);
+    if (!primitive.isDestroyed()) {
+      primitive.destroy();
+    }
+
+    this._primitive = null;
+    this._attached = false;
+  }
+
+  /**
+   * 创建 Cesium 原语实例
+   */
+  protected abstract _createPrimitive(): TPrimitive | Promise<TPrimitive>;
+
+  /**
+   * 初始化完成后的钩子
+   */
+  protected _onInit(_primitive: TPrimitive): void {
+    // 默认无操作
+  }
+
+  /**
+   * 挂载完成后的钩子
+   */
+  protected _onAttach(_viewer: Cesium.Viewer, _primitive: TPrimitive): void {
+    // 默认无操作
+  }
+
+  /**
+   * 卸载完成后的钩子
+   */
+  protected _onDetach(_viewer: Cesium.Viewer, _primitive: TPrimitive): void {
+    // 默认无操作
+  }
+
+  /**
+   * 销毁前的钩子
+   */
+  protected _onDispose(_primitive: TPrimitive): void {
+    // 默认无操作
   }
 }

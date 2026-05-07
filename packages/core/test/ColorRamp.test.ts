@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import * as Cesium from "cesium";
 import { ColorGradient } from '../src/util/ColorRamp';
 
 describe('ColorGradient', () => {
@@ -24,15 +23,12 @@ describe('ColorGradient', () => {
     expect(gradient.evaluateColor(25)).toBe('rgba(255, 255, 255, 0.8)');
   });
 
-  it('should return Cesium.Color correctly', () => {
+  it('should allow overriding fallback alpha in evaluated CSS color', () => {
     const gradient = new ColorGradient({
       colorPalette: ['#ff0000', '#0000ff'],
       stops: [0, 1]
     });
 
-    const cColor = gradient.evaluateCesiumColor(0.5, 1);
-    expect(cColor).toBeInstanceOf(Cesium.Color);
-    expect(cColor.red).toBeCloseTo(128 / 255, 1);
-    expect(cColor.blue).toBeCloseTo(128 / 255, 1);
+    expect(gradient.evaluateColor(0.5, 1)).toBe('rgba(128, 0, 128, 1)');
   });
 });

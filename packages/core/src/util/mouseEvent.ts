@@ -1,55 +1,58 @@
-import * as Cesium from "cesium";
+import type { ScreenPoint } from '../adapter/EngineAdapter.js';
 
-export type ScreenInteractCallback = (screenPt: Cesium.Cartesian2, worldPt?: Cesium.Cartesian3) => void;
+export interface ScreenInteractSource {
+  canvas: EventTarget;
+  pickPosition?(screenPt: ScreenPoint): unknown;
+}
+
+export type ScreenInteractCallback = (screenPt: ScreenPoint, worldPt?: unknown) => void;
 
 /**
  * 屏幕交互侦听器，用于代理 Cesium 原生的输入操作
  */
 export class ScreenInteractor {
-  private _eventHandler: Cesium.ScreenSpaceEventHandler | null;
-  private readonly _viewerScene: Cesium.Scene;
+  private readonly _source: ScreenInteractSource;
+  private readonly _listeners: Array<{ type: string; handler: EventListener }> = [];
 
-  constructor(sceneInstance: Cesium.Scene) {
-    this._viewerScene = sceneInstance;
-    this._eventHandler = new Cesium.ScreenSpaceEventHandler(sceneInstance.canvas);
+  constructor(source: ScreenInteractSource) {
+    this._source = source;
   }
 
   registerLeftClick(cb: ScreenInteractCallback): void {
-    if (!this._eventHandler) return;
-    this._eventHandler.setInputAction((evt: { position: Cesium.Cartesian2 }) => {
-      const wPt = this._viewerScene.pickPosition(evt.position);
-      cb(evt.position, wPt);
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    this._bind('click', cb);
   }
 
   registerLeftDoubleClick(cb: ScreenInteractCallback): void {
-    if (!this._eventHandler) return;
-    this._eventHandler.setInputAction((evt: { position: Cesium.Cartesian2 }) => {
-      const wPt = this._viewerScene.pickPosition(evt.position);
-      cb(evt.position, wPt);
-    }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+    this._bind('dblclick', cb);
   }
 
   registerRightClick(cb: ScreenInteractCallback): void {
-    if (!this._eventHandler) return;
-    this._eventHandler.setInputAction((evt: { position: Cesium.Cartesian2 }) => {
-      const wPt = this._viewerScene.pickPosition(evt.position);
-      cb(evt.position, wPt);
-    }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+    this._bind('contextmenu', cb);
   }
 
   registerPointerMove(cb: ScreenInteractCallback): void {
-    if (!this._eventHandler) return;
-    this._eventHandler.setInputAction((evt: { endPosition: Cesium.Cartesian2 }) => {
-      const wPt = this._viewerScene.pickPosition(evt.endPosition);
-      cb(evt.endPosition, wPt);
-    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+    this._bind('mousemove', cb, true);
   }
 
   dispose(): void {
-    if (this._eventHandler) {
-      this._eventHandler.destroy();
-      this._eventHandler = null;
+    for (const { type, handler } of this._listeners) {
+      this._source.canvas.removeEventListener(type, handler);
     }
+    this._listeners.length = 0;
+  }
+
+  private _bind(type: string, cb: ScreenInteractCallback, useClientPosition = false): void {
+    const handler = (evt: Event) => {
+      if (!(evt instanceof MouseEvent)) return;
+      const screenPt: ScreenPoint = {
+        x: useClientPosition ? evt.clientX : evt.clientX,
+        y: useClientPosition ? evt.clientY : evt.clientY,
+      };
+      const worldPt = this._source.pickPosition?.(screenPt);
+      cb(screenPt, worldPt);
+    };
+
+    this._source.canvas.addEventListener(type, handler);
+    this._listeners.push({ type, handler });
   }
 }

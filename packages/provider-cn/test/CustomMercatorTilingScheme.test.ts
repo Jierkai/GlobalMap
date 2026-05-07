@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import * as Cesium from "cesium";
 import { ConfigurableMercatorTilingScheme } from '../src/projection/CustomMercatorTilingScheme';
+
+function fromDegrees(longitude: number, latitude: number) {
+  return {
+    longitude: longitude * Math.PI / 180,
+    latitude: latitude * Math.PI / 180,
+  };
+}
 
 describe('ConfigurableMercatorTilingScheme', () => {
   it('should initialize with default parameters', () => {
     const scheme = new ConfigurableMercatorTilingScheme();
-    expect(scheme).toBeInstanceOf(Cesium.WebMercatorTilingScheme);
+    expect(typeof scheme.tileXYToNativeRectangle).toBe('function');
+    expect(typeof scheme.positionToTileXY).toBe('function');
   });
 
   it('should calculate native rectangle according to custom resolutions', () => {
@@ -28,7 +35,7 @@ describe('ConfigurableMercatorTilingScheme', () => {
       tileSizePx: 256
     });
 
-    const carto = Cesium.Cartographic.fromDegrees(0, 0);
+    const carto = fromDegrees(0, 0);
     const xy = scheme.positionToTileXY(carto, 0);
     expect(xy).toBeDefined();
     expect(xy!.x).toBeGreaterThanOrEqual(0);

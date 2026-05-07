@@ -43,6 +43,10 @@ import {
  * ```
  */
 export interface Signal<T> {
+  /** 直接调用时读取当前值。 */
+  (): T;
+  /** 直接传参时写入新值。 */
+  (val: T): void;
   /** 获取当前信号值（会建立依赖追踪） */
   get(): T;
   /** 设置信号新值，触发依赖更新 */
@@ -59,6 +63,8 @@ export interface Signal<T> {
  * @typeParam T - 派生值的类型
  */
 export interface ReadonlySignal<T> {
+  /** 直接调用时读取当前值。 */
+  (): T;
   /** 获取当前派生值（会建立依赖追踪） */
   get(): T;
   /** 订阅派生值变化，返回取消订阅函数 */
@@ -109,20 +115,20 @@ const signalSymbol = Symbol('cgx-signal');
 export function signal<T>(initial: T): Signal<T> {
   // 使用 alien-signals 创建底层信号
   const inner = _signal(initial);
-  return {
-    // 调用底层信号函数获取当前值（建立依赖追踪）
-    get: () => inner(),
-    // 调用底层信号函数设置新值（触发依赖更新）
-    set: (val: T) => inner(val),
-    // 通过 effect 包装实现订阅：当信号值变化时自动调用 handler
-    subscribe: (handler: (v: T) => void) => {
-      return effect(() => {
-        handler(inner());
-      });
-    },
-    // 暴露内部符号，供框架适配器进行类型识别
-    get __symbol() { return signalSymbol; }
-  };
+  const fn = function (this: void, val?: T): T | void {
+    if (arguments.length === 0) {
+      return inner();
+    }
+    inner(val as T);
+  } as Signal<T>;
+
+  fn.get = () => inner();
+  fn.set = (val: T) => inner(val);
+  fn.subscribe = (handler: (v: T) => void) => effect(() => handler(inner()));
+  Object.defineProperty(fn, '__symbol', {
+    get: () => signalSymbol
+  });
+  return fn;
 }
 
 /**
@@ -148,18 +154,16 @@ export function signal<T>(initial: T): Signal<T> {
 export function computed<T>(fn: () => T): ReadonlySignal<T> {
   // 使用 alien-signals 创建底层 computed 信号
   const inner = _computed(fn);
-  return {
-    // 调用底层 computed 函数获取当前派生值（建立依赖追踪）
-    get: () => inner(),
-    // 通过 effect 包装实现订阅：当派生值变化时自动调用 handler
-    subscribe: (handler: (v: T) => void) => {
-      return effect(() => {
-        handler(inner());
-      });
-    },
-    // 暴露内部符号，供框架适配器进行类型识别
-    get __symbol() { return signalSymbol; }
-  };
+  const read = function (): T {
+    return inner();
+  } as ReadonlySignal<T>;
+
+  read.get = () => inner();
+  read.subscribe = (handler: (v: T) => void) => effect(() => handler(inner()));
+  Object.defineProperty(read, '__symbol', {
+    get: () => signalSymbol
+  });
+  return read;
 }
 
 /**
@@ -315,5 +319,5 @@ export function untrack<T>(fn: () => T): T {
  * ```
  */
 export function peek<T>(s: Signal<T> | ReadonlySignal<T>): T {
-  return untrack(() => s.get());
+  return untrack(() => s());
 }

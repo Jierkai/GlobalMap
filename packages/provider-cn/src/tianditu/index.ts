@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { ImageryProvider } from '@cgx/layer';
 
 export interface TiandituProviderOptions {
@@ -10,7 +10,7 @@ export function createTiandituProvider(opts: TiandituProviderOptions): ImageryPr
   const ready = signal(true);
   return {
     ready,
-    toCesium() {
+    toRenderSpec() {
       return { type: 'tianditu', ...opts };
     }
   };

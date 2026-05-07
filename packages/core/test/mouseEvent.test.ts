@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import * as Cesium from "cesium";
 import { ScreenInteractor } from '../src/util/mouseEvent';
 
 describe('ScreenInteractor', () => {
@@ -9,8 +8,8 @@ describe('ScreenInteractor', () => {
     const canvas = document.createElement('canvas');
     const mockScene = {
       canvas,
-      pickPosition: vi.fn().mockReturnValue(new Cesium.Cartesian3(1, 1, 1))
-    } as unknown as Cesium.Scene;
+      pickPosition: vi.fn().mockReturnValue({ x: 1, y: 1, z: 1 })
+    };
 
     const interactor = new ScreenInteractor(mockScene);
     

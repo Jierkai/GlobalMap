@@ -1,6 +1,7 @@
 {
   "name": "@cgx/adapter-cesium",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -8,6 +9,16 @@
       "development": "./src/index.ts",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./primitive": {
+      "development": "./src/primitive.ts",
+      "import": "./dist/primitive.js",
+      "types": "./dist/primitive.d.ts"
+    },
+    "./entity": {
+      "development": "./src/entity.ts",
+      "import": "./dist/entity.js",
+      "types": "./dist/entity.d.ts"
     }
   },
   "scripts": {
@@ -19,9 +30,6 @@
     "cesium": "^1.139.0",
     "jsdom": "^29.0.2",
     "vitest": "^2.1.9"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "license": "Apache-2.0",
   "repository": {

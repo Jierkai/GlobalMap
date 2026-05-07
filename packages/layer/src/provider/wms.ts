@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { ImageryProvider } from './ImageryProvider.js';
 
 export interface WmsProviderOptions {
@@ -11,7 +11,7 @@ export function createWmsProvider(opts: WmsProviderOptions): ImageryProvider {
   const ready = signal(true);
   return {
     ready,
-    toCesium() {
+    toRenderSpec() {
       return { type: 'wms', url: opts.url, layers: opts.layers, parameters: opts.parameters };
     }
   };

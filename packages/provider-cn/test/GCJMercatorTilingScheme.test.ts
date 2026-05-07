@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import * as Cesium from "cesium";
 import { applyGcj02Offset, revertGcj02Offset, Gcj02TilingScheme } from '../src/projection/GCJMercatorTilingScheme';
+
+function fromDegrees(longitude: number, latitude: number) {
+  return {
+    longitude: longitude * Math.PI / 180,
+    latitude: latitude * Math.PI / 180,
+  };
+}
+
+function toDegrees(radians: number): number {
+  return radians * 180 / Math.PI;
+}
 
 describe('GCJMercatorTilingScheme', () => {
   it('should correctly apply and revert GCJ-02 offset inside China', () => {
@@ -27,11 +37,11 @@ describe('GCJMercatorTilingScheme', () => {
 
   it('should correctly integrate with Cesium Projection in Scheme', () => {
     const scheme = new Gcj02TilingScheme();
-    const carto = Cesium.Cartographic.fromDegrees(116.404, 39.915);
+    const carto = fromDegrees(116.404, 39.915);
     const projected = scheme.projection.project(carto);
     const unprojected = scheme.projection.unproject(projected);
     
-    expect(Math.abs(Cesium.Math.toDegrees(unprojected.longitude) - 116.404)).toBeLessThan(1e-5);
-    expect(Math.abs(Cesium.Math.toDegrees(unprojected.latitude) - 39.915)).toBeLessThan(1e-5);
+    expect(Math.abs(toDegrees(unprojected.longitude) - 116.404)).toBeLessThan(1e-5);
+    expect(Math.abs(toDegrees(unprojected.latitude) - 39.915)).toBeLessThan(1e-5);
   });
 });

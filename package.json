@@ -8,7 +8,9 @@
     "test": "turbo run test",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
-    "compliance:scan": "bash scripts/compliance-scan.sh"
+    "compliance:scan": "bash scripts/compliance-scan.sh",
+    "architecture:scan": "bash scripts/architecture-scan.sh",
+    "architecture:scan:dts": "pnpm build && bash scripts/architecture-dts-scan.sh"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",

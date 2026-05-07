@@ -1,4 +1,5 @@
 import { createBaseLayer, type Layer } from './types.js';
+import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
 
 /**
  * 矢量图层配置选项
@@ -9,7 +10,7 @@ export interface VectorLayerOptions<F> {
   /** 图层唯一标识 */
   id?: string;
   /** 矢量数据 */
-  data?: any;
+  data?: F;
   /** 是否可见 */
   visible?: boolean;
   /** 透明度 (0.0 - 1.0) */
@@ -26,7 +27,7 @@ export interface VectorLayerOptions<F> {
 export interface VectorLayer<F> extends Layer {
   readonly type: 'vector';
   /** 矢量数据 */
-  readonly data: any;
+  readonly data: F | undefined;
 }
 
 /**
@@ -45,17 +46,34 @@ export function createVectorLayer<F>(opts: VectorLayerOptions<F> = {}): VectorLa
   if (opts.opacity !== undefined) base.opacity(opts.opacity);
   if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
 
+  let mountHandle: Updatable<LayerRenderSpec> | void;
+
+  const buildSpec = (): LayerRenderSpec => ({
+    id: base.id,
+    kind: 'vector',
+    visible: base.visible(),
+    opacity: base.opacity(),
+    zIndex: base.zIndex(),
+    data: opts.data,
+  });
+
   return {
     ...base,
     type: 'vector',
     data: opts.data,
-    _mount(adapter: any) {
-       // Vector layers are logical containers for Features.
-       // Specific mounting logic (like grouping features into a CustomDataSource)
-       // can be implemented here if needed.
+    _mount(adapter: EngineAdapter) {
+      mountHandle = adapter.mountLayer?.(buildSpec());
     },
-    _unmount(adapter: any) {
-       // Unmount logic for VectorLayer
+    async _unmount(adapter: EngineAdapter) {
+      await adapter.unmountLayer?.(mountHandle);
+      mountHandle?.dispose?.();
+      mountHandle = undefined;
+    },
+    toRenderSpec(): LayerRenderSpec {
+      return buildSpec();
+    },
+    raw() {
+      return mountHandle ?? null;
     }
   } as any;
 }

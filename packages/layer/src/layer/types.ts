@@ -1,5 +1,6 @@
-import { signal } from 'alien-signals';
+import { signal, type Signal } from '@cgx/reactive';
 import { TypedEmitter, type Off } from '@cgx/core';
+import type { LayerRenderSpec } from '@cgx/core';
 
 /** 描述地图图层的类别。 */
 export type LayerType = 'imagery' | 'terrain' | 'vector' | 'tileset';
@@ -14,11 +15,15 @@ export interface Layer {
   /** 图层的特定类别。 */
   readonly type: LayerType;
   /** 表示图层是否可见的响应式信号。 */
-  readonly visible: { (): boolean; (v: boolean): void };
+  readonly visible: Signal<boolean>;
   /** 表示图层不透明度的响应式信号 (0 到 1)。 */
-  readonly opacity: { (): number; (v: number): void };
+  readonly opacity: Signal<number>;
   /** 表示图层渲染 z-index 层级的响应式信号。 */
-  readonly zIndex: { (): number; (v: number): void };
+  readonly zIndex: Signal<number>;
+  /** 输出给底层引擎适配器的渲染描述。 */
+  toRenderSpec(): LayerRenderSpec;
+  /** 返回底层挂载句柄，未挂载时返回 null。 */
+  raw(): unknown;
   /** 显示图层。 */
   show(): void;
   /** 隐藏图层。 */
@@ -55,6 +60,16 @@ export function createBaseLayer(id: string, type: LayerType) {
       if (managerRef) managerRef.remove(id);
     },
     on: emitter.on.bind(emitter) as (event: 'mounted' | 'removed', cb: () => void) => Off,
+    toRenderSpec(): LayerRenderSpec {
+      return {
+        id,
+        kind: type,
+        visible: visible(),
+        opacity: opacity(),
+        zIndex: zIndex(),
+      } as LayerRenderSpec;
+    },
+    raw() { return null; },
     // 提供给管理器的内部 API
     _setManager(m: { remove(id: string): void } | null) { managerRef = m; },
     _emitMounted() { emitter.emit('mounted', {}); },

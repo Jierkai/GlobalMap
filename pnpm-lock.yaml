@@ -84,9 +84,6 @@ importers:
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
-      alien-signals:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
@@ -121,12 +118,12 @@ importers:
 
   packages/effect:
     dependencies:
-      '@cgx/adapter-cesium':
+      '@cgx/core':
         specifier: workspace:*
-        version: link:../adapter-cesium
-      cesium:
-        specifier: '>=1.120.0'
-        version: 1.139.0
+        version: link:../core
+      '@cgx/reactive':
+        specifier: workspace:*
+        version: link:../reactive
     devDependencies:
       vitest:
         specifier: ^2.1.9
@@ -134,18 +131,12 @@ importers:
 
   packages/feature:
     dependencies:
-      '@cgx/adapter-cesium':
-        specifier: workspace:*
-        version: link:../adapter-cesium
       '@cgx/core':
         specifier: workspace:*
         version: link:../core
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
-      alien-signals:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
@@ -174,18 +165,12 @@ importers:
 
   packages/layer:
     dependencies:
-      '@cgx/adapter-cesium':
-        specifier: workspace:*
-        version: link:../adapter-cesium
       '@cgx/core':
         specifier: workspace:*
         version: link:../core
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
-      alien-signals:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
@@ -223,9 +208,6 @@ importers:
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
-      alien-signals:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^2.1.9

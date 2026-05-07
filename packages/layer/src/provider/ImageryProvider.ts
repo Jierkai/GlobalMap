@@ -1,6 +1,6 @@
-import { signal } from 'alien-signals';
+import type { Signal } from '@cgx/reactive';
 
 export interface ImageryProvider {
-  readonly ready: { (): boolean; (v: boolean): void };
-  toCesium(): unknown;
+  readonly ready: Signal<boolean>;
+  toRenderSpec(): unknown;
 }

@@ -1,4 +1,4 @@
-import { signal } from 'alien-signals';
+import { signal } from '@cgx/reactive';
 import type { ImageryProvider } from './ImageryProvider.js';
 
 export interface SingleTileProviderOptions {
@@ -10,7 +10,7 @@ export function createSingleTileProvider(opts: SingleTileProviderOptions): Image
   const ready = signal(true);
   return {
     ready,
-    toCesium() {
+    toRenderSpec() {
       return { type: 'singleTile', ...opts };
     }
   };

@@ -2,6 +2,8 @@ import { vi } from 'vitest';
 
 const mockViewerDestroy = vi.fn();
 const mockHandlerDestroy = vi.fn();
+const primitiveStore = new Set<any>();
+const entityStore = new Set<any>();
 
 vi.mock('cesium', () => {
   return {
@@ -13,8 +15,12 @@ vi.mock('cesium', () => {
           pickEllipsoid: vi.fn((pos) => ({ x: pos.x, y: pos.y, z: 0 }))
         },
         primitives: {
-          add: vi.fn(),
-          remove: vi.fn(() => true)
+          add: vi.fn((primitive) => {
+            primitiveStore.add(primitive);
+            return primitive;
+          }),
+          remove: vi.fn((primitive) => primitiveStore.delete(primitive)),
+          contains: vi.fn((primitive) => primitiveStore.has(primitive))
         },
         pick: vi.fn(() => ({ id: 'picked' })),
         drillPick: vi.fn(() => [{ id: 'picked1' }])
@@ -27,8 +33,12 @@ vi.mock('cesium', () => {
       };
       terrainProvider = {};
       entities = {
-        add: vi.fn((opts) => ({ ...opts, id: 'entity-id' })),
-        remove: vi.fn(() => true)
+        add: vi.fn((opts) => {
+          const entity = { ...opts, id: 'entity-id' };
+          entityStore.add(entity);
+          return entity;
+        }),
+        remove: vi.fn((entity) => entityStore.delete(entity))
       };
       destroy = mockViewerDestroy;
       isDestroyed = vi.fn(() => false);
@@ -69,6 +79,24 @@ vi.mock('cesium', () => {
     },
     Cesium3DTileset: {
       fromUrl: vi.fn(async (url, options) => ({ url, ...options, id: 'tileset' }))
+    },
+    Primitive: class {
+      private _destroyed = false;
+      id: string;
+      constructor(options: any = {}) {
+        Object.assign(this, options);
+      }
+      destroy = vi.fn(() => {
+        this._destroyed = true;
+        return undefined;
+      });
+      isDestroyed = vi.fn(() => this._destroyed);
+    },
+    Entity: class {
+      id: string;
+      constructor(options: any = {}) {
+        Object.assign(this, options);
+      }
     },
     Material: class { constructor(options: any) { Object.assign(this, options); } },
   };

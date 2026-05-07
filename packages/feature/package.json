@@ -17,10 +17,8 @@
     "size": "size-limit"
   },
   "dependencies": {
-    "@cgx/adapter-cesium": "workspace:*",
     "@cgx/core": "workspace:*",
-    "@cgx/reactive": "workspace:*",
-    "alien-signals": "^3.1.2"
+    "@cgx/reactive": "workspace:*"
   },
   "devDependencies": {
     "@size-limit/preset-small-lib": "^12.1.0",
