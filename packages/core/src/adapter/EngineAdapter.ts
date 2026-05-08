@@ -45,6 +45,7 @@ export interface GraphicLayerRenderSpec extends LayerRenderSpecBase {
   kind: 'graphic';
   graphics?: FeatureRenderSpec[];
   clustering?: Record<string, unknown>;
+  renderMode?: GraphicRenderMode;
 }
 
 export interface DataLayerRenderSpec extends LayerRenderSpecBase {
@@ -67,6 +68,24 @@ export interface FeatureRenderSpecBase {
   properties?: Record<string, unknown>;
   position?: unknown;
   positions?: unknown[];
+  renderMode?: GraphicRenderMode;
+  label?: LabelRenderSpec;
+}
+
+export type GraphicRenderMode = 'entity' | 'primitive' | 'auto';
+
+export interface LabelRenderSpec extends Record<string, unknown> {
+  text?: string;
+  font?: string;
+  scale?: number;
+  fillColor?: unknown;
+  outlineColor?: unknown;
+  outlineWidth?: number;
+  pixelOffset?: unknown;
+  eyeOffset?: unknown;
+  showBackground?: boolean;
+  backgroundColor?: unknown;
+  position?: unknown;
 }
 
 export interface PointFeatureRenderSpec extends FeatureRenderSpecBase {
@@ -85,7 +104,7 @@ export interface PolygonFeatureRenderSpec extends FeatureRenderSpecBase {
   polygon?: Record<string, unknown>;
 }
 
-export type ModelRenderMode = 'entity' | 'primitive' | 'auto';
+export type ModelRenderMode = GraphicRenderMode;
 
 export interface ModelFeatureRenderSpec extends FeatureRenderSpecBase {
   kind: 'model';
@@ -98,7 +117,13 @@ export interface ModelFeatureRenderSpec extends FeatureRenderSpecBase {
 export interface LabelFeatureRenderSpec extends FeatureRenderSpecBase {
   kind: 'label';
   position?: unknown;
-  label?: Record<string, unknown>;
+  label?: LabelRenderSpec;
+}
+
+export interface TextFeatureRenderSpec extends FeatureRenderSpecBase {
+  kind: 'text';
+  position?: unknown;
+  label?: LabelRenderSpec;
 }
 
 export interface BillboardFeatureRenderSpec extends FeatureRenderSpecBase {
@@ -113,6 +138,7 @@ export type FeatureRenderSpec =
   | PolygonFeatureRenderSpec
   | ModelFeatureRenderSpec
   | LabelFeatureRenderSpec
+  | TextFeatureRenderSpec
   | BillboardFeatureRenderSpec;
 
 export type WeatherEffectKind = 'rain' | 'snow' | 'fog' | 'cloud' | 'lightning' | string;

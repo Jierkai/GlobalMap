@@ -1,5 +1,5 @@
 import { effect } from '@cgx/reactive';
-import type { EngineAdapter, FeatureRenderSpec, ModelRenderMode, Updatable } from '@cgx/core';
+import type { EngineAdapter, FeatureRenderSpec, LabelRenderSpec, ModelRenderMode, Updatable } from '@cgx/core';
 import { createFeature, type FeatureOptions, type Feature } from './Feature.js';
 
 /**
@@ -12,6 +12,8 @@ export interface MountableFeature {
 
 /** 点要素配置选项 */
 export type PointFeatureOptions = FeatureOptions<'point'> & { pixelSize?: number; color?: unknown };
+/** 图标广告牌要素配置选项 */
+export type BillboardFeatureOptions = FeatureOptions<'billboard'> & { image?: unknown; scale?: number; color?: unknown };
 /** 折线要素配置选项 */
 export type PolylineFeatureOptions = FeatureOptions<'polyline'> & { width?: number; material?: unknown; clampToGround?: boolean };
 /** 多边形要素配置选项 */
@@ -24,6 +26,17 @@ export type ModelFeatureOptions = FeatureOptions<'model'> & {
 };
 /** 标签要素配置选项 */
 export type LabelFeatureOptions = FeatureOptions<'label'> & { text?: string; font?: string; scale?: number };
+/** 独立文字图元配置选项 */
+export type TextFeatureOptions = FeatureOptions<'text'> & { text?: string; font?: string; scale?: number };
+
+function buildLabelSpec(opts: { text?: string; font?: string; scale?: number; label?: LabelRenderSpec }): LabelRenderSpec {
+  const label: LabelRenderSpec = { ...(opts.label ?? {}) };
+  label.text = opts.text ?? opts.label?.text ?? '';
+  const font = opts.font ?? opts.label?.font;
+  if (font !== undefined) label.font = font;
+  label.scale = opts.scale ?? opts.label?.scale ?? 1.0;
+  return label;
+}
 
 interface MountedFeatureHandle<T extends FeatureRenderSpec> {
   handle: Updatable<T> | void;
@@ -77,6 +90,39 @@ export function createPointFeature(opts: PointFeatureOptions): Feature<'point'> 
       return mounted?.handle ?? undefined;
     },
   } as Feature<'point'> & MountableFeature;
+}
+
+export function createBillboardFeature(opts: BillboardFeatureOptions): Feature<'billboard'> & MountableFeature {
+  const feature = createFeature('billboard', opts);
+  let mounted: MountedFeatureHandle<FeatureRenderSpec> | null = null;
+
+  const buildSpec = (): FeatureRenderSpec => ({
+    ...feature.toRenderSpec(),
+    kind: 'billboard',
+    position: feature.position?.(),
+    billboard: {
+      image: opts.image,
+      scale: opts.scale ?? 1.0,
+      color: opts.color,
+    },
+  });
+
+  return {
+    ...feature,
+    _mount(adapter: EngineAdapter) {
+      mounted = createMountedFeature(adapter, buildSpec);
+    },
+    _unmount(adapter: EngineAdapter) {
+      if (!mounted) return;
+      adapter.unmountFeature?.(mounted.handle);
+      mounted.dispose();
+      mounted = null;
+    },
+    toRenderSpec: buildSpec,
+    raw() {
+      return mounted?.handle ?? undefined;
+    },
+  } as Feature<'billboard'> & MountableFeature;
 }
 
 export function createPolylineFeature(opts: PolylineFeatureOptions): Feature<'polyline'> & MountableFeature {
@@ -185,11 +231,7 @@ export function createLabelFeature(opts: LabelFeatureOptions): Feature<'label'> 
     ...feature.toRenderSpec(),
     kind: 'label',
     position: feature.position?.(),
-    label: {
-      text: opts.text ?? '',
-      font: opts.font,
-      scale: opts.scale ?? 1.0,
-    },
+    label: buildLabelSpec(opts),
   });
 
   return {
@@ -208,4 +250,33 @@ export function createLabelFeature(opts: LabelFeatureOptions): Feature<'label'> 
       return mounted?.handle ?? undefined;
     },
   } as Feature<'label'> & MountableFeature;
+}
+
+export function createTextFeature(opts: TextFeatureOptions): Feature<'text'> & MountableFeature {
+  const feature = createFeature('text', opts);
+  let mounted: MountedFeatureHandle<FeatureRenderSpec> | null = null;
+
+  const buildSpec = (): FeatureRenderSpec => ({
+    ...feature.toRenderSpec(),
+    kind: 'text',
+    position: feature.position?.(),
+    label: buildLabelSpec(opts),
+  });
+
+  return {
+    ...feature,
+    _mount(adapter: EngineAdapter) {
+      mounted = createMountedFeature(adapter, buildSpec);
+    },
+    _unmount(adapter: EngineAdapter) {
+      if (!mounted) return;
+      adapter.unmountFeature?.(mounted.handle);
+      mounted.dispose();
+      mounted = null;
+    },
+    toRenderSpec: buildSpec,
+    raw() {
+      return mounted?.handle ?? undefined;
+    },
+  } as Feature<'text'> & MountableFeature;
 }

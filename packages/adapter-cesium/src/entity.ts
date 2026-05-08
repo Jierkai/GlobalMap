@@ -199,6 +199,12 @@ export abstract class EntityBase<
     if (options.model) {
       this._mergeEntityProperty(entity, 'model', options.model);
     }
+    if (options.billboard) {
+      this._mergeEntityProperty(entity, 'billboard', options.billboard);
+    }
+    if (options.label) {
+      this._mergeEntityProperty(entity, 'label', options.label);
+    }
     if (options.properties) {
       entity.properties = options.properties as any;
     }

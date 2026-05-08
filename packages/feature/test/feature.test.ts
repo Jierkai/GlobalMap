@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { effect } from '@cgx/reactive';
 import { createFeature } from '../src/kinds/Feature.js';
-import { createModelFeature } from '../src/kinds/factories.js';
+import { createModelFeature, createPointFeature, createTextFeature } from '../src/kinds/factories.js';
 import { toGeoJSON, fromGeoJSON } from '../src/geojson/index.js';
 
 describe('Feature Factories', () => {
@@ -122,6 +122,45 @@ describe('Model Features', () => {
         uri: '/assets/model.glb',
         scale: 1,
         renderMode: 'primitive',
+      },
+    });
+  });
+});
+
+describe('Feature Labels and Text', () => {
+  it('should expose attached labels on regular feature render specs', () => {
+    const feature = createPointFeature({
+      id: 'point-with-label',
+      position: [110, 30],
+      label: { text: 'Station A', pixelOffset: [0, -16] },
+      renderMode: 'primitive',
+    });
+
+    expect(feature.toRenderSpec()).toMatchObject({
+      id: 'point-with-label',
+      kind: 'point',
+      renderMode: 'primitive',
+      label: { text: 'Station A', pixelOffset: [0, -16] },
+    });
+  });
+
+  it('should create independent text-only features', () => {
+    const feature = createTextFeature({
+      id: 'text-1',
+      position: [110, 30, 50],
+      text: 'Only text',
+      font: '16px sans-serif',
+    });
+
+    expect(feature.kind).toBe('text');
+    expect(feature.toRenderSpec()).toMatchObject({
+      id: 'text-1',
+      kind: 'text',
+      position: [110, 30, 50],
+      label: {
+        text: 'Only text',
+        font: '16px sans-serif',
+        scale: 1,
       },
     });
   });

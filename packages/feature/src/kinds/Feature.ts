@@ -6,10 +6,10 @@ import type {
 } from '../capabilities/types.js';
 import type { LodConfig } from '../lod/types.js';
 import { toGeoJSON } from '../geojson/index.js';
-import type { FeatureRenderSpec } from '@cgx/core';
+import type { FeatureRenderSpec, GraphicRenderMode, LabelRenderSpec } from '@cgx/core';
 
 /** Cgx 框架内支持的所有图形要素类别。 */
-export type FeatureKind = 'point' | 'polyline' | 'polygon' | 'billboard' | 'label' | 'model';
+export type FeatureKind = 'point' | 'polyline' | 'polygon' | 'billboard' | 'label' | 'text' | 'model';
 
 /** 可被混合到 Feature 中的标准通用交互能力。 */
 export type FeatureCapabilities = Pickable & Hoverable & Highlightable;
@@ -21,6 +21,10 @@ export type FeatureCapabilities = Pickable & Hoverable & Highlightable;
 export interface BaseFeature<K extends FeatureKind> extends Identified, Styleable<Record<string, unknown>>, GeoJsonSerializable {
   /** 该图形要素的几何类别。 */
   readonly kind: K;
+  /** 图元渲染模式。 */
+  readonly renderMode?: GraphicRenderMode;
+  /** 附属标签配置，text/label 独立文字图元会把它作为自身文字配置。 */
+  readonly label?: LabelRenderSpec;
   /** 控制该图形要素可见性层级的 LOD 配置。 */
   readonly lod: LodConfig;
   /** 暴露访问底层引擎对象的逃生舱，请谨慎使用。 */
@@ -35,7 +39,7 @@ export interface BaseFeature<K extends FeatureKind> extends Identified, Styleabl
  * @template K 该图形要素的类别。
  */
 export type Feature<K extends FeatureKind> = BaseFeature<K> & 
-  (K extends 'point' | 'billboard' | 'label' | 'model' ? Positionable : MultiPositionable) & 
+  (K extends 'point' | 'billboard' | 'label' | 'text' | 'model' ? Positionable : MultiPositionable) & 
   Partial<FeatureCapabilities>;
 
 /** 创建新 Feature 时可供传入的配置选项。 */
@@ -52,6 +56,10 @@ export interface FeatureOptions<K extends FeatureKind> {
   positions?: unknown[];
   /** 初始的样式属性配置。 */
   style?: Record<string, unknown>;
+  /** 图元级渲染模式，优先级高于图层默认模式。 */
+  renderMode?: GraphicRenderMode;
+  /** 附属标签配置；对于 text/label 图元表示自身文字配置。 */
+  label?: LabelRenderSpec;
   /** LOD (细节层次) 配置。 */
   lod?: LodConfig;
   /** 指定该图形要素是否支持被光标拾取交互。 */
@@ -81,6 +89,8 @@ export function createFeature<K extends FeatureKind>(kind: K, opts: FeatureOptio
     name: opts.name,
     properties,
     style,
+    renderMode: opts.renderMode,
+    label: opts.label,
     lod,
     raw: () => undefined
   } as unknown as Record<string, unknown>;
@@ -94,6 +104,14 @@ export function createFeature<K extends FeatureKind>(kind: K, opts: FeatureOptio
       properties,
     };
 
+    if (opts.renderMode !== undefined) {
+      spec.renderMode = opts.renderMode;
+    }
+
+    if (opts.label !== undefined) {
+      spec.label = opts.label;
+    }
+
     if ('position' in base) {
       spec.position = (base.position as () => unknown)();
     }
@@ -104,7 +122,7 @@ export function createFeature<K extends FeatureKind>(kind: K, opts: FeatureOptio
     return spec as unknown as FeatureRenderSpec;
   };
 
-  if (opts.position !== undefined || ['point', 'billboard', 'label', 'model'].includes(kind)) {
+  if (opts.position !== undefined || ['point', 'billboard', 'label', 'text', 'model'].includes(kind)) {
     base.position = signal(opts.position ?? null);
   } else {
     base.positions = signal(opts.positions ?? []);

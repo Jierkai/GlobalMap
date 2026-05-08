@@ -74,4 +74,99 @@ describe('createCesiumAdapter', () => {
     primitiveHandle?.dispose();
     await adapter.dispose?.();
   });
+
+  it('mounts attached labels and independent text as entities', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container');
+    const viewer = adapter.unsafeNative?.() as any;
+
+    const pointHandle = adapter.mountFeature?.({
+      id: 'point-with-label',
+      kind: 'point',
+      position: [120, 30],
+      point: { pixelSize: 12 },
+      label: { text: 'Point label', pixelOffset: [0, -16] },
+    });
+
+    const textHandle = adapter.mountFeature?.({
+      id: 'text-only',
+      kind: 'text',
+      position: [121, 31],
+      label: { text: 'Only text' },
+    });
+
+    await Promise.resolve();
+    expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'point-with-label',
+      point: { pixelSize: 12 },
+      label: { text: 'Point label', pixelOffset: [0, -16] },
+    }));
+    expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'text-only',
+      label: { text: 'Only text' },
+    }));
+
+    pointHandle?.dispose();
+    textHandle?.dispose();
+    await adapter.dispose?.();
+  });
+
+  it('batches primitive graphics at the graphic layer level', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container');
+    const viewer = adapter.unsafeNative?.() as any;
+
+    const handle = adapter.mountLayer?.({
+      id: 'graphics',
+      kind: 'graphic',
+      renderMode: 'primitive',
+      graphics: [
+        {
+          id: 'p1',
+          kind: 'point',
+          position: [120, 30],
+          point: { pixelSize: 10 },
+          label: { text: 'P1' },
+        },
+        {
+          id: 'line-1',
+          kind: 'polyline',
+          positions: [[120, 30], [121, 31]],
+          polyline: { width: 2 },
+        },
+        {
+          id: 'text-1',
+          kind: 'text',
+          position: [122, 32],
+          label: { text: 'Text' },
+        },
+        {
+          id: 'm1',
+          kind: 'model',
+          position: [123, 33, 10],
+          model: { uri: '/model.glb', renderMode: 'entity' },
+        },
+      ],
+    });
+
+    await Promise.resolve();
+    expect(viewer?.scene.primitives.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'graphics:point' }));
+    expect(viewer?.scene.primitives.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'graphics:label' }));
+    expect(viewer?.scene.primitives.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'graphics:polyline' }));
+    expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'm1',
+      model: { uri: '/model.glb' },
+    }));
+
+    const labelPrimitive = viewer?.scene.primitives.add.mock.calls
+      .map((call: any[]) => call[0])
+      .find((primitive: any) => primitive.id === 'graphics:label');
+    expect(labelPrimitive.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'p1', text: 'P1' }),
+      expect.objectContaining({ id: 'text-1', text: 'Text' }),
+    ]));
+
+    handle?.dispose();
+    await adapter.dispose?.();
+  });
 });

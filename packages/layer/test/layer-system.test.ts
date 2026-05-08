@@ -43,28 +43,75 @@ describe('GraphicLayer', () => {
     const layer = createGraphicLayer({
       id: 'graphics',
       clustering: { enabled: true, pixelRange: 24, minimumClusterSize: 3 },
+      renderMode: 'primitive',
     });
 
-    const point = layer.addPoint({ id: 'p1', position: [120, 30], pixelSize: 12 });
+    const point = layer.addPoint({ id: 'p1', position: [120, 30], pixelSize: 12, label: { text: 'P1' } });
     layer.addPolyline({ id: 'line-1', positions: [[120, 30], [121, 31]] });
     const model = layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb', renderMode: 'primitive' });
+    const text = layer.addText({ id: 't1', position: [121, 31], text: 'Hello' });
 
     expect(layer.getById('p1')).toBe(point);
     expect(layer.find((graphic) => graphic.id === 'm1')).toBe(model);
-    expect(layer.list()).toHaveLength(3);
+    expect(layer.find((graphic) => graphic.id === 't1')).toBe(text);
+    expect(layer.list()).toHaveLength(4);
 
     const spec = layer.toRenderSpec();
     expect(spec.kind).toBe('graphic');
     expect(spec.clustering).toEqual({ enabled: true, pixelRange: 24, minimumClusterSize: 3 });
-    expect(spec.graphics).toHaveLength(3);
+    expect(spec.renderMode).toBe('primitive');
+    expect(spec.graphics).toHaveLength(4);
+    expect(spec.graphics?.find((graphic) => graphic.id === 'p1')).toMatchObject({
+      kind: 'point',
+      label: { text: 'P1' },
+    });
+    expect(spec.graphics?.find((graphic) => graphic.id === 't1')).toMatchObject({
+      kind: 'text',
+      label: { text: 'Hello' },
+    });
     expect(spec.graphics?.find((graphic) => graphic.id === 'm1')).toMatchObject({
       kind: 'model',
       model: { uri: '/model.glb', scale: 1, renderMode: 'primitive' },
     });
   });
 
-  it('mounts/unmounts contained graphics and respects visibility toggles', () => {
-    const { adapter } = createAdapter();
+  it('mounts graphic layers through the layer channel and updates on visibility/list changes', () => {
+    const { adapter, layerHandles } = createAdapter();
+    const layer = createGraphicLayer({ id: 'graphics' });
+    layer.addPoint({ id: 'p1', position: [120, 30] });
+    layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb' });
+
+    layer._mount?.(adapter);
+    expect(adapter.mountLayer).toHaveBeenCalledTimes(1);
+    expect(adapter.mountFeature).not.toHaveBeenCalled();
+
+    layer.hide();
+    expect(layerHandles[0]?.update).toHaveBeenCalled();
+
+    layer.show();
+    expect(layerHandles[0]?.update).toHaveBeenCalled();
+
+    expect(layer.removeGraphic('p1')).toBe(true);
+    expect(layerHandles[0]?.update).toHaveBeenCalled();
+
+    layer.clear();
+    expect(layer.list()).toHaveLength(0);
+    expect(layerHandles[0]?.update).toHaveBeenCalled();
+
+    layer._unmount?.(adapter);
+    expect(adapter.unmountLayer).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to per-feature mounting when layer mounting is unavailable', () => {
+    const featureHandles: Array<Updatable<FeatureRenderSpec>> = [];
+    const adapter: EngineAdapter = {
+      mountFeature: vi.fn(() => {
+        const handle = createMountHandle<FeatureRenderSpec>();
+        featureHandles.push(handle);
+        return handle;
+      }),
+      unmountFeature: vi.fn(),
+    };
     const layer = createGraphicLayer({ id: 'graphics' });
     layer.addPoint({ id: 'p1', position: [120, 30] });
     layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb' });
@@ -74,16 +121,6 @@ describe('GraphicLayer', () => {
 
     layer.hide();
     expect(adapter.unmountFeature).toHaveBeenCalledTimes(2);
-
-    layer.show();
-    expect(adapter.mountFeature).toHaveBeenCalledTimes(4);
-
-    expect(layer.removeGraphic('p1')).toBe(true);
-    expect(adapter.unmountFeature).toHaveBeenCalledTimes(3);
-
-    layer.clear();
-    expect(layer.list()).toHaveLength(0);
-    expect(adapter.unmountFeature).toHaveBeenCalledTimes(4);
   });
 });
 

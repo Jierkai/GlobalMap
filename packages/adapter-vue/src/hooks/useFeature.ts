@@ -5,10 +5,11 @@ import {
   createPolygonFeature, 
   createModelFeature,
   createLabelFeature,
+  createTextFeature,
   type Feature
 } from '@cgx/feature';
 
-type FeatureType = 'point' | 'polyline' | 'polygon' | 'model' | 'label';
+type FeatureType = 'point' | 'polyline' | 'polygon' | 'model' | 'label' | 'text';
 
 /**
  * 要素组合式函数
@@ -30,6 +31,7 @@ export function useFeature(kind: FeatureType, options: any) {
   else if (kind === 'polygon') feature = createPolygonFeature(options);
   else if (kind === 'model') feature = createModelFeature(options);
   else if (kind === 'label') feature = createLabelFeature(options);
+  else if (kind === 'text') feature = createTextFeature(options);
 
   onMounted(() => {
     if (viewer && feature && feature._mount) {

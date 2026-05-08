@@ -1,17 +1,23 @@
 import { effect, signal, type Signal } from '@cgx/reactive';
-import type { EngineAdapter, GraphicLayerRenderSpec, LayerRenderSpec } from '@cgx/core';
+import type { EngineAdapter, GraphicLayerRenderSpec, GraphicRenderMode, LayerRenderSpec, Updatable } from '@cgx/core';
 import {
+  createBillboardFeature,
+  createLabelFeature,
   createModelFeature,
   createPointFeature,
   createPolygonFeature,
   createPolylineFeature,
+  createTextFeature,
+  type BillboardFeatureOptions,
   type Feature,
   type FeatureKind,
+  type LabelFeatureOptions,
   type ModelFeatureOptions,
   type MountableFeature,
   type PointFeatureOptions,
   type PolygonFeatureOptions,
   type PolylineFeatureOptions,
+  type TextFeatureOptions,
 } from '@cgx/feature';
 import { createBaseLayer, type Layer } from './types.js';
 
@@ -30,17 +36,22 @@ export interface GraphicLayerOptions {
   opacity?: number;
   zIndex?: number;
   clustering?: GraphicLayerClustering;
+  renderMode?: GraphicRenderMode;
 }
 
 export interface GraphicLayer extends Layer {
   readonly type: 'graphic';
   readonly clustering: Signal<GraphicLayerClustering | undefined>;
+  readonly renderMode: Signal<GraphicRenderMode>;
   remove(): void;
   add<T extends Graphic>(graphic: T): T;
   addPoint(opts: PointFeatureOptions): Graphic<'point'>;
+  addBillboard(opts: BillboardFeatureOptions): Graphic<'billboard'>;
   addPolyline(opts: PolylineFeatureOptions): Graphic<'polyline'>;
   addPolygon(opts: PolygonFeatureOptions): Graphic<'polygon'>;
   addModel(opts: ModelFeatureOptions): Graphic<'model'>;
+  addLabel(opts: LabelFeatureOptions): Graphic<'label'>;
+  addText(opts: TextFeatureOptions): Graphic<'text'>;
   removeGraphic(graphicOrId: Graphic | string): boolean;
   clear(): void;
   getById<T extends Graphic = Graphic>(id: string): T | undefined;
@@ -56,9 +67,12 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
   if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
 
   const clustering = signal<GraphicLayerClustering | undefined>(opts.clustering);
+  const renderMode = signal<GraphicRenderMode>(opts.renderMode ?? 'entity');
   const graphics = new Map<string, Graphic>();
   const mountedGraphicIds = new Set<string>();
   let adapterRef: EngineAdapter | null = null;
+  let layerMountHandle: Updatable<LayerRenderSpec> | void;
+  let layerEffectDisposer: (() => void) | null = null;
   let visibilityDisposer: (() => void) | null = null;
 
   const buildSpec = (): GraphicLayerRenderSpec => {
@@ -68,6 +82,7 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
       visible: base.visible(),
       opacity: base.opacity(),
       zIndex: base.zIndex(),
+      renderMode: renderMode(),
       graphics: Array.from(graphics.values()).map((graphic) => graphic.toRenderSpec()),
     };
 
@@ -115,7 +130,11 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
       unmountGraphic(prev);
     }
     graphics.set(graphic.id, graphic);
-    mountGraphic(graphic);
+    if (layerMountHandle) {
+      layerMountHandle.update?.(buildSpec());
+    } else {
+      mountGraphic(graphic);
+    }
     return graphic;
   };
 
@@ -128,12 +147,16 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
     ...base,
     type: 'graphic',
     clustering,
+    renderMode,
     remove() {
       base.remove();
     },
     add: addGraphic,
     addPoint(opts: PointFeatureOptions) {
       return addGraphic(createPointFeature(opts));
+    },
+    addBillboard(opts: BillboardFeatureOptions) {
+      return addGraphic(createBillboardFeature(opts));
     },
     addPolyline(opts: PolylineFeatureOptions) {
       return addGraphic(createPolylineFeature(opts));
@@ -144,18 +167,29 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
     addModel(opts: ModelFeatureOptions) {
       return addGraphic(createModelFeature(opts));
     },
+    addLabel(opts: LabelFeatureOptions) {
+      return addGraphic(createLabelFeature(opts));
+    },
+    addText(opts: TextFeatureOptions) {
+      return addGraphic(createTextFeature(opts));
+    },
     removeGraphic(graphicOrId: Graphic | string) {
       const graphic = getGraphic(graphicOrId);
       if (!graphic) return false;
-      unmountGraphic(graphic);
-      return graphics.delete(graphic.id);
+      if (!layerMountHandle) unmountGraphic(graphic);
+      const removed = graphics.delete(graphic.id);
+      if (removed && layerMountHandle) layerMountHandle.update?.(buildSpec());
+      return removed;
     },
     clear() {
-      for (const graphic of graphics.values()) {
-        unmountGraphic(graphic);
+      if (!layerMountHandle) {
+        for (const graphic of graphics.values()) {
+          unmountGraphic(graphic);
+        }
       }
       graphics.clear();
       mountedGraphicIds.clear();
+      layerMountHandle?.update?.(buildSpec());
     },
     getById(id: string) {
       return getGraphic(id);
@@ -174,6 +208,14 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
     },
     _mount(adapter: EngineAdapter) {
       adapterRef = adapter;
+      layerMountHandle = adapter.mountLayer?.(buildSpec());
+      if (layerMountHandle) {
+        layerEffectDisposer = effect(() => {
+          layerMountHandle?.update?.(buildSpec());
+        });
+        return;
+      }
+
       syncMountedGraphics();
       visibilityDisposer = effect(() => {
         base.visible();
@@ -181,6 +223,15 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
       });
     },
     _unmount(adapter: EngineAdapter) {
+      if (layerEffectDisposer) {
+        layerEffectDisposer();
+        layerEffectDisposer = null;
+      }
+      if (layerMountHandle) {
+        adapter.unmountLayer?.(layerMountHandle);
+        layerMountHandle.dispose?.();
+        layerMountHandle = undefined;
+      }
       if (visibilityDisposer) {
         visibilityDisposer();
         visibilityDisposer = null;
@@ -197,7 +248,7 @@ export function createGraphicLayer(opts: GraphicLayerOptions = {}): GraphicLayer
       return buildSpec();
     },
     raw() {
-      return Array.from(graphics.values()).map((graphic) => graphic.raw());
+      return layerMountHandle ?? Array.from(graphics.values()).map((graphic) => graphic.raw());
     }
   } as GraphicLayer;
 }
