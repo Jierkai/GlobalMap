@@ -26,6 +26,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@cgx/core": "workspace:*"
+  },
   "devDependencies": {
     "cesium": "^1.139.0",
     "jsdom": "^29.0.2",

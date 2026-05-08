@@ -1,5 +1,5 @@
 import { effect } from '@cgx/reactive';
-import type { EngineAdapter, FeatureRenderSpec, Updatable } from '@cgx/core';
+import type { EngineAdapter, FeatureRenderSpec, ModelRenderMode, Updatable } from '@cgx/core';
 import { createFeature, type FeatureOptions, type Feature } from './Feature.js';
 
 /**
@@ -17,7 +17,11 @@ export type PolylineFeatureOptions = FeatureOptions<'polyline'> & { width?: numb
 /** 多边形要素配置选项 */
 export type PolygonFeatureOptions = FeatureOptions<'polygon'> & { extrudedHeight?: number; material?: unknown };
 /** 模型要素配置选项 */
-export type ModelFeatureOptions = FeatureOptions<'model'> & { uri?: string; scale?: number };
+export type ModelFeatureOptions = FeatureOptions<'model'> & {
+  uri?: string;
+  scale?: number;
+  renderMode?: ModelRenderMode;
+};
 /** 标签要素配置选项 */
 export type LabelFeatureOptions = FeatureOptions<'label'> & { text?: string; font?: string; scale?: number };
 
@@ -151,6 +155,7 @@ export function createModelFeature(opts: ModelFeatureOptions): Feature<'model'> 
     model: {
       uri: opts.uri,
       scale: opts.scale ?? 1.0,
+      renderMode: opts.renderMode ?? 'auto',
     },
   });
 

@@ -4,6 +4,7 @@ const mockViewerDestroy = vi.fn();
 const mockHandlerDestroy = vi.fn();
 const primitiveStore = new Set<any>();
 const entityStore = new Set<any>();
+const dataSourceStore = new Set<any>();
 
 vi.mock('cesium', () => {
   return {
@@ -30,6 +31,13 @@ vi.mock('cesium', () => {
       imageryLayers = {
         addImageryProvider: vi.fn((p) => p),
         remove: vi.fn(() => true)
+      };
+      dataSources = {
+        add: vi.fn(async (source) => {
+          dataSourceStore.add(source);
+          return source;
+        }),
+        remove: vi.fn((source) => dataSourceStore.delete(source))
       };
       terrainProvider = {};
       entities = {
@@ -72,6 +80,16 @@ vi.mock('cesium', () => {
       toDegrees: (rad: number) => rad * 180 / Math.PI,
       toRadians: (deg: number) => deg * Math.PI / 180
     },
+    WebMercatorProjection: class {
+      unproject(point: any) {
+        const radius = 6378137;
+        return {
+          longitude: point.x / radius,
+          latitude: Math.PI / 2 - 2 * Math.atan(Math.exp(-point.y / radius)),
+          height: point.z
+        };
+      }
+    },
     UrlTemplateImageryProvider: class { constructor(options: any) { Object.assign(this, options); } },
     WebMapServiceImageryProvider: class { constructor(options: any) { Object.assign(this, options); } },
     CesiumTerrainProvider: {
@@ -79,6 +97,9 @@ vi.mock('cesium', () => {
     },
     Cesium3DTileset: {
       fromUrl: vi.fn(async (url, options) => ({ url, ...options, id: 'tileset' }))
+    },
+    GeoJsonDataSource: {
+      load: vi.fn(async (data, options) => ({ data, options, id: 'geojson' }))
     },
     Primitive: class {
       private _destroyed = false;

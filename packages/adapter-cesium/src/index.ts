@@ -33,11 +33,14 @@
 // 导出 Viewer 创建函数
 export { createViewer } from './viewer';
 
+// 导出 EngineAdapter 工厂
+export { createCesiumAdapter, type CesiumEngineAdapterOptions } from './adapter';
+
 // 导出逃生舱口函数（谨慎使用）
 export { unsafeGetCesium, unsafeGetNativeViewer } from './escape-hatch';
 
 // 导出坐标转换工具函数
-export { toCartesian3, fromCartesian3 } from './coord';
+export { LngLatPosition, toCartesian3, fromCartesian3, type LngLatPositionInput } from './coord';
 
 // 导出屏幕空间事件发射器
 export { ScreenSpaceEmitter } from './event';

@@ -1,5 +1,4 @@
-import { createBaseLayer, type Layer } from './types.js';
-import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
+import { createGeoJsonLayer, type GeoJsonLayer } from './GeoJsonLayer.js';
 
 /**
  * 矢量图层配置选项
@@ -24,8 +23,10 @@ export interface VectorLayerOptions<F> {
  *
  * @typeParam F - 要素数据类型
  */
-export interface VectorLayer<F> extends Layer {
-  readonly type: 'vector';
+export interface VectorLayer<F> extends GeoJsonLayer {
+  readonly type: 'data';
+  readonly sourceType: 'geojson';
+  readonly legacyType: 'vector';
   /** 矢量数据 */
   readonly data: F | undefined;
 }
@@ -34,46 +35,26 @@ export interface VectorLayer<F> extends Layer {
  * 创建矢量图层
  *
  * @description
- * 创建一个矢量图层实例。矢量图层是 Feature 的逻辑容器，
- * 具体的挂载逻辑（如将要素分组到 CustomDataSource）可在此实现。
+ * Legacy 兼容入口。新的数据加载语义请使用 `createGeoJsonLayer()`，
+ * 图元管理语义请使用 `createGraphicLayer()`。
  *
  * @param opts - 矢量图层配置选项
  * @returns VectorLayer 实例
  */
 export function createVectorLayer<F>(opts: VectorLayerOptions<F> = {}): VectorLayer<F> {
-  const base = createBaseLayer(opts.id || crypto.randomUUID(), 'vector');
-  if (opts.visible !== undefined) base.visible(opts.visible);
-  if (opts.opacity !== undefined) base.opacity(opts.opacity);
-  if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
-
-  let mountHandle: Updatable<LayerRenderSpec> | void;
-
-  const buildSpec = (): LayerRenderSpec => ({
-    id: base.id,
-    kind: 'vector',
-    visible: base.visible(),
-    opacity: base.opacity(),
-    zIndex: base.zIndex(),
+  const layer = createGeoJsonLayer({
     data: opts.data,
+    ...(opts.id !== undefined ? { id: opts.id } : {}),
+    ...(opts.visible !== undefined ? { visible: opts.visible } : {}),
+    ...(opts.opacity !== undefined ? { opacity: opts.opacity } : {}),
+    ...(opts.zIndex !== undefined ? { zIndex: opts.zIndex } : {}),
   });
 
   return {
-    ...base,
-    type: 'vector',
+    ...layer,
+    type: 'data',
+    sourceType: 'geojson',
+    legacyType: 'vector',
     data: opts.data,
-    _mount(adapter: EngineAdapter) {
-      mountHandle = adapter.mountLayer?.(buildSpec());
-    },
-    async _unmount(adapter: EngineAdapter) {
-      await adapter.unmountLayer?.(mountHandle);
-      mountHandle?.dispose?.();
-      mountHandle = undefined;
-    },
-    toRenderSpec(): LayerRenderSpec {
-      return buildSpec();
-    },
-    raw() {
-      return mountHandle ?? null;
-    }
-  } as any;
+  } as VectorLayer<F>;
 }

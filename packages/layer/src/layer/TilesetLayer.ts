@@ -1,6 +1,4 @@
-import { createBaseLayer, type Layer } from './types.js';
-import { effect } from '@cgx/reactive';
-import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
+import { createDataLayer, type DataLayer } from './DataLayer.js';
 
 /**
  * 3D Tileset 图层配置选项
@@ -21,8 +19,9 @@ export interface TilesetLayerOptions {
 /**
  * 3D Tileset 图层接口
  */
-export interface TilesetLayer extends Layer {
-  readonly type: 'tileset';
+export interface TilesetLayer extends DataLayer {
+  readonly type: 'data';
+  readonly sourceType: 'tileset';
   /** Tileset 资源 URL */
   readonly url: string;
 }
@@ -37,48 +36,19 @@ export interface TilesetLayer extends Layer {
  * @returns TilesetLayer 实例
  */
 export function createTilesetLayer(opts: TilesetLayerOptions): TilesetLayer {
-  const base = createBaseLayer(opts.id || crypto.randomUUID(), 'tileset');
-  if (opts.visible !== undefined) base.visible(opts.visible);
-  if (opts.opacity !== undefined) base.opacity(opts.opacity);
-  if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
-
-  let mountHandle: Updatable<LayerRenderSpec> | void;
-  let effectDisposer: (() => void) | null = null;
-
-  const buildSpec = (): LayerRenderSpec => ({
-    id: base.id,
-    kind: 'tileset',
-    visible: base.visible(),
-    opacity: base.opacity(),
-    zIndex: base.zIndex(),
-    url: opts.url,
+  const layer = createDataLayer({
+    sourceType: 'tileset',
+    payload: { url: opts.url },
+    ...(opts.id !== undefined ? { id: opts.id } : {}),
+    ...(opts.visible !== undefined ? { visible: opts.visible } : {}),
+    ...(opts.opacity !== undefined ? { opacity: opts.opacity } : {}),
+    ...(opts.zIndex !== undefined ? { zIndex: opts.zIndex } : {}),
   });
 
   return {
-    ...base,
-    type: 'tileset',
+    ...layer,
+    type: 'data',
+    sourceType: 'tileset',
     url: opts.url,
-    async _mount(adapter: EngineAdapter) {
-      if (!adapter) return;
-      mountHandle = adapter.mountLayer?.(buildSpec());
-      effectDisposer = effect(() => {
-        mountHandle?.update?.(buildSpec());
-      });
-    },
-    async _unmount(adapter: EngineAdapter) {
-      if (effectDisposer) {
-        effectDisposer();
-        effectDisposer = null;
-      }
-      await adapter.unmountLayer?.(mountHandle);
-      mountHandle?.dispose?.();
-      mountHandle = undefined;
-    },
-    toRenderSpec(): LayerRenderSpec {
-      return buildSpec();
-    },
-    raw() {
-      return mountHandle ?? null;
-    }
-  } as any;
+  } as TilesetLayer;
 }

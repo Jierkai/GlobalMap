@@ -41,21 +41,24 @@ export interface TerrainLayerRenderSpec extends LayerRenderSpecBase {
   provider: unknown;
 }
 
-export interface VectorLayerRenderSpec extends LayerRenderSpecBase {
-  kind: 'vector';
-  data?: unknown;
+export interface GraphicLayerRenderSpec extends LayerRenderSpecBase {
+  kind: 'graphic';
+  graphics?: FeatureRenderSpec[];
+  clustering?: Record<string, unknown>;
 }
 
-export interface TilesetLayerRenderSpec extends LayerRenderSpecBase {
-  kind: 'tileset';
-  url: string;
+export interface DataLayerRenderSpec extends LayerRenderSpecBase {
+  kind: 'data';
+  sourceType: string;
+  payload?: unknown;
+  options?: Record<string, unknown>;
 }
 
 export type LayerRenderSpec =
   | ImageryLayerRenderSpec
   | TerrainLayerRenderSpec
-  | VectorLayerRenderSpec
-  | TilesetLayerRenderSpec;
+  | GraphicLayerRenderSpec
+  | DataLayerRenderSpec;
 
 export interface FeatureRenderSpecBase {
   id: string;
@@ -82,10 +85,14 @@ export interface PolygonFeatureRenderSpec extends FeatureRenderSpecBase {
   polygon?: Record<string, unknown>;
 }
 
+export type ModelRenderMode = 'entity' | 'primitive' | 'auto';
+
 export interface ModelFeatureRenderSpec extends FeatureRenderSpecBase {
   kind: 'model';
   position?: unknown;
-  model?: Record<string, unknown>;
+  model?: (Record<string, unknown> & {
+    renderMode?: ModelRenderMode;
+  });
 }
 
 export interface LabelFeatureRenderSpec extends FeatureRenderSpecBase {

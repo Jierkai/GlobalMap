@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { effect } from '@cgx/reactive';
 import { createFeature } from '../src/kinds/Feature.js';
+import { createModelFeature } from '../src/kinds/factories.js';
 import { toGeoJSON, fromGeoJSON } from '../src/geojson/index.js';
 
 describe('Feature Factories', () => {
@@ -102,5 +103,26 @@ describe('Feature GeoJSON Serialization', () => {
     const restored = fromGeoJSON(gj);
     expect(restored.kind).toBe('polygon');
     expect((restored as any).positions()).toEqual(coords);
+  });
+});
+
+describe('Model Features', () => {
+  it('should expose renderMode in model render specs', () => {
+    const feature = createModelFeature({
+      id: 'model-1',
+      position: [110, 30, 100],
+      uri: '/assets/model.glb',
+      renderMode: 'primitive',
+    });
+
+    expect(feature.toRenderSpec()).toMatchObject({
+      id: 'model-1',
+      kind: 'model',
+      model: {
+        uri: '/assets/model.glb',
+        scale: 1,
+        renderMode: 'primitive',
+      },
+    });
   });
 });
