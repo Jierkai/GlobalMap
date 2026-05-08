@@ -5,7 +5,8 @@
 
 ## 架构
 不直接绑定具体渲染引擎，而是通过定义 `Feature` 数据结构和特性：
-- **FeatureKinds**: 定义了 `point`, `polyline`, `polygon`, `billboard`, `model` 等。
+- **FeatureKinds**: 定义了 `point`, `polyline`, `polygon`, `billboard`, `model`, `text` 等。
+- **Labels**: 除独立 `text`/兼容 `label` 图元外，普通图元都可通过 `label` 配置附属标签。
 - **Capabilities**: 使用 Mixin 的思想组合如 `Pickable`, `Hoverable`, `Styleable` 等能力接口。
 - **GeoJSON**: 提供 `toGeoJSON` 和 `fromGeoJSON` 的转换能力。
 - **StyleSystem**: 提供统一的 `StyleRule` 和 `createStyleSystem`。
@@ -18,6 +19,10 @@ import { createFeature, toGeoJSON } from '@cgx/feature';
 const pointFeature = createFeature('point', {
   id: 'point-1',
   position: { lng: 116.4, lat: 39.9, alt: 0 },
+  label: {
+    text: 'Point 1'
+  },
+  renderMode: 'entity',
   style: {
     color: '#FF0000',
     pixelSize: 10
@@ -27,4 +32,15 @@ const pointFeature = createFeature('point', {
 // 转换为 GeoJSON
 const geoJsonData = toGeoJSON(pointFeature);
 console.log(geoJsonData);
+```
+
+```typescript
+import { createTextFeature } from '@cgx/feature';
+
+const text = createTextFeature({
+  id: 'text-1',
+  position: [116.4, 39.9, 0],
+  text: 'Only text',
+  renderMode: 'primitive'
+});
 ```
