@@ -1,4 +1,4 @@
-import { createGeoJsonLayer, type GeoJsonLayer } from './GeoJsonLayer.js';
+import { GeoJsonLayer, type GeoJsonLayerOptions } from './GeoJsonLayer.js';
 
 /**
  * 矢量图层配置选项
@@ -19,42 +19,41 @@ export interface VectorLayerOptions<F> {
 }
 
 /**
- * 矢量图层接口
- *
- * @typeParam F - 要素数据类型
- */
-export interface VectorLayer<F> extends GeoJsonLayer {
-  readonly type: 'data';
-  readonly sourceType: 'geojson';
-  readonly legacyType: 'vector';
-  /** 矢量数据 */
-  readonly data: F | undefined;
-}
-
-/**
- * 创建矢量图层
+ * 矢量图层领域类（Legacy 兼容）
  *
  * @description
- * Legacy 兼容入口。新的数据加载语义请使用 `createGeoJsonLayer()`，
- * 图元管理语义请使用 `createGraphicLayer()`。
+ * 继承自 {@link GeoJsonLayer}，以 `geojson` 作为固定数据源类型，
+ * 保留 `legacyType: 'vector'` 标识以兼容旧代码。
  *
- * @param opts - 矢量图层配置选项
- * @returns VectorLayer 实例
+ * 新的数据加载语义请使用 {@link GeoJsonLayer}，
+ * 图元管理语义请使用 {@link GraphicLayer}。
+ *
+ * @typeParam F - 要素数据类型
+ *
+ * @example
+ * ```ts
+ * const layer = new VectorLayer({
+ *   data: { type: 'FeatureCollection', features: [] },
+ * });
+ * ```
  */
-export function createVectorLayer<F>(opts: VectorLayerOptions<F> = {}): VectorLayer<F> {
-  const layer = createGeoJsonLayer({
-    data: opts.data,
-    ...(opts.id !== undefined ? { id: opts.id } : {}),
-    ...(opts.visible !== undefined ? { visible: opts.visible } : {}),
-    ...(opts.opacity !== undefined ? { opacity: opts.opacity } : {}),
-    ...(opts.zIndex !== undefined ? { zIndex: opts.zIndex } : {}),
-  });
+export class VectorLayer<F = unknown> extends GeoJsonLayer {
+  /** Legacy 兼容类型标识 */
+  readonly legacyType: 'vector' = 'vector';
 
-  return {
-    ...layer,
-    type: 'data',
-    sourceType: 'geojson',
-    legacyType: 'vector',
-    data: opts.data,
-  } as VectorLayer<F>;
+  /** 矢量数据 */
+  readonly data: F | undefined;
+
+  constructor(opts: VectorLayerOptions<F> = {}) {
+    const geoOpts: GeoJsonLayerOptions = {
+      data: opts.data,
+    };
+    if (opts.id !== undefined) geoOpts.id = opts.id;
+    if (opts.visible !== undefined) geoOpts.visible = opts.visible;
+    if (opts.opacity !== undefined) geoOpts.opacity = opts.opacity;
+    if (opts.zIndex !== undefined) geoOpts.zIndex = opts.zIndex;
+
+    super(geoOpts);
+    this.data = opts.data;
+  }
 }

@@ -4,29 +4,37 @@ Add XYZ, WMS, WMTS, or ArcGIS imagery layers.
 
 ```ts
 import { createViewer } from '@cgx/core';
-import { createImageryLayer } from '@cgx/layer';
+import { ImageryLayer } from '@cgx/layer';
+import { createXyzProvider } from '@cgx/layer/provider/xyz';
 
 const viewer = createViewer('#app');
 
 // XYZ tile layer
-const xyzLayer = createImageryLayer({
-  type: 'xyz',
-  url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+const xyzLayer = new ImageryLayer({
+  provider: createXyzProvider({
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  }),
 });
 
 // Reactive properties
-xyzLayer.visible.set(true);
-xyzLayer.opacity.set(0.8);
+xyzLayer.visible(true);
+xyzLayer.opacity(0.8);
+
+viewer.layers.add(xyzLayer);
 ```
 
 ## WMS Layer
 
 ```ts
-const wmsLayer = createImageryLayer({
-  type: 'wms',
-  url: 'https://example.com/wms',
-  layers: 'temperature',
-  parameters: { format: 'image/png', transparent: true },
+import { ImageryLayer } from '@cgx/layer';
+import { createWmsProvider } from '@cgx/layer/provider/wms';
+
+const wmsLayer = new ImageryLayer({
+  provider: createWmsProvider({
+    url: 'https://example.com/wms',
+    layers: 'temperature',
+    parameters: { format: 'image/png', transparent: 'true' },
+  }),
 });
 ```
 

@@ -1,7 +1,7 @@
-import { createBaseLayer, type Layer } from './types.js';
-import type { ImageryProvider } from '../provider/ImageryProvider.js';
 import { effect } from '@cgx/reactive';
 import type { EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
+import type { ImageryProvider } from '../provider/ImageryProvider.js';
+import { BaseLayer } from './types.js';
 
 /**
  * 影像图层配置选项
@@ -20,70 +20,73 @@ export interface ImageryLayerOptions {
 }
 
 /**
- * 影像图层接口
- */
-export interface ImageryLayer extends Layer {
-  readonly type: 'imagery';
-  /** 影像提供者 */
-  readonly provider: Promise<ImageryProvider> | ImageryProvider;
-}
-
-/**
- * 创建影像图层
+ * 影像图层领域类
  *
  * @description
- * 创建一个影像图层领域对象。实际渲染由 EngineAdapter 消费 RenderSpec 完成。
+ * 负责管理影像图层的配置、响应式状态和生命周期。
+ * 实际渲染由 EngineAdapter 消费 RenderSpec 完成。
  *
- * @param opts - 影像图层配置选项
- * @returns ImageryLayer 实例
+ * @example
+ * ```ts
+ * const layer = new ImageryLayer({
+ *   provider: createXyzProvider({ url: 'https://example.com/{z}/{x}/{y}.png' }),
+ * });
+ * viewer.layers.add(layer);
+ * ```
  */
-export function createImageryLayer(opts: ImageryLayerOptions): ImageryLayer {
-  const base = createBaseLayer(opts.id || crypto.randomUUID(), 'imagery');
-  if (opts.visible !== undefined) base.visible(opts.visible);
-  if (opts.opacity !== undefined) base.opacity(opts.opacity);
-  if (opts.zIndex !== undefined) base.zIndex(opts.zIndex);
+export class ImageryLayer extends BaseLayer {
+  /** 影像提供者 */
+  readonly provider: Promise<ImageryProvider> | ImageryProvider;
 
-  let resolvedProvider: ImageryProvider | null = null;
-  let mountHandle: Updatable<LayerRenderSpec> | void;
-  let effectDisposer: (() => void) | null = null;
+  /** @internal 已解析的提供者 */
+  private _resolvedProvider: ImageryProvider | null = null;
 
-  const buildSpec = (): LayerRenderSpec => ({
-    id: base.id,
-    kind: 'imagery',
-    visible: base.visible(),
-    opacity: base.opacity(),
-    zIndex: base.zIndex(),
-    provider: resolvedProvider?.toRenderSpec() ?? null,
-  });
+  /** @internal 挂载句柄 */
+  private _mountHandle: Updatable<LayerRenderSpec> | void = undefined;
 
-  const layer = {
-    ...base,
-    type: 'imagery',
-    provider: opts.provider,
-    async _mount(adapter: EngineAdapter) {
-      if (!adapter) return;
-      resolvedProvider = await opts.provider;
-      mountHandle = adapter.mountLayer?.(buildSpec());
-      effectDisposer = effect(() => {
-        mountHandle?.update?.(buildSpec());
-      });
-    },
-    async _unmount(adapter: EngineAdapter) {
-      if (effectDisposer) {
-        effectDisposer();
-        effectDisposer = null;
-      }
-      await adapter.unmountLayer?.(mountHandle);
-      mountHandle?.dispose?.();
-      mountHandle = undefined;
-    },
-    toRenderSpec(): LayerRenderSpec {
-      return buildSpec();
-    },
-    raw() {
-      return mountHandle ?? null;
+  /** @internal 响应式副作用清理函数 */
+  private _effectDisposer: (() => void) | null = null;
+
+  constructor(opts: ImageryLayerOptions) {
+    super(opts.id, 'imagery');
+    this.provider = opts.provider;
+
+    if (opts.visible !== undefined) this.visible(opts.visible);
+    if (opts.opacity !== undefined) this.opacity(opts.opacity);
+    if (opts.zIndex !== undefined) this.zIndex(opts.zIndex);
+  }
+
+  protected buildSpec(): LayerRenderSpec {
+    return {
+      id: this.id,
+      kind: 'imagery',
+      visible: this.visible(),
+      opacity: this.opacity(),
+      zIndex: this.zIndex(),
+      provider: this._resolvedProvider?.toRenderSpec() ?? null,
+    };
+  }
+
+  protected async mount(adapter: EngineAdapter): Promise<void> {
+    if (!adapter) return;
+    this._resolvedProvider = await this.provider;
+    this._mountHandle = adapter.mountLayer?.(this.buildSpec());
+    this._effectDisposer = effect(() => {
+      this._mountHandle?.update?.(this.buildSpec());
+    });
+  }
+
+  protected async unmount(adapter: EngineAdapter): Promise<void> {
+    if (this._effectDisposer) {
+      this._effectDisposer();
+      this._effectDisposer = null;
     }
-  };
+    await adapter.unmountLayer?.(this._mountHandle);
+    this._mountHandle?.dispose?.();
+    this._mountHandle = undefined;
+  }
 
-  return layer as ImageryLayer;
+  raw(): unknown {
+    return this._mountHandle ?? null;
+  }
 }

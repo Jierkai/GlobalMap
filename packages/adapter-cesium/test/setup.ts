@@ -66,9 +66,26 @@ vi.mock('cesium', () => {
       RIGHT_CLICK: 4,
       MOUSE_MOVE: 5
     },
-    Cartesian3: {
-      fromDegrees: vi.fn((lng, lat, alt) => ({ x: lng, y: lat, z: alt })),
-      clone: vi.fn(c => ({...c}))
+    Cartesian2: class {
+      x: number;
+      y: number;
+      constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+      }
+      static clone = vi.fn((c: any) => ({ ...c }));
+    },
+    Cartesian3: class {
+      x: number;
+      y: number;
+      z: number;
+      constructor(x = 0, y = 0, z = 0) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }
+      static fromDegrees = vi.fn((lng, lat, alt) => ({ x: lng, y: lat, z: alt }));
+      static clone = vi.fn((c: any) => ({ ...c }));
     },
     Cartographic: {
       fromCartesian: vi.fn(c => {

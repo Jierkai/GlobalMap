@@ -204,6 +204,46 @@ function resolveLabelPosition(spec: FeatureRenderSpec): unknown | undefined {
   return undefined;
 }
 
+function isCartesian2Like(value: unknown): value is { x: number; y: number } {
+  return !!value
+    && typeof value === 'object'
+    && 'x' in value
+    && 'y' in value
+    && typeof value.x === 'number'
+    && typeof value.y === 'number';
+}
+
+function isCartesian3Like(value: unknown): value is { x: number; y: number; z: number } {
+  return isCartesian2Like(value)
+    && 'z' in value
+    && typeof value.z === 'number';
+}
+
+function toCesiumCartesian2(value: unknown): unknown {
+  if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') {
+    return new Cesium.Cartesian2(value[0], value[1]);
+  }
+
+  if (isCartesian2Like(value)) return value;
+
+  return value;
+}
+
+function toCesiumCartesian3(value: unknown): unknown {
+  if (
+    Array.isArray(value)
+    && typeof value[0] === 'number'
+    && typeof value[1] === 'number'
+    && typeof value[2] === 'number'
+  ) {
+    return new Cesium.Cartesian3(value[0], value[1], value[2]);
+  }
+
+  if (isCartesian3Like(value)) return value;
+
+  return value;
+}
+
 /**
  * 将标签渲染规格转换为 Cesium 标签配置对象
  *
@@ -217,6 +257,12 @@ function resolveLabelPosition(spec: FeatureRenderSpec): unknown | undefined {
 function toCesiumLabel(label: LabelRenderSpec | undefined): Record<string, unknown> | undefined {
   if (!label) return undefined;
   const { position: _position, ...rest } = label;
+  if (rest.pixelOffset !== undefined) {
+    rest.pixelOffset = toCesiumCartesian2(rest.pixelOffset);
+  }
+  if (rest.eyeOffset !== undefined) {
+    rest.eyeOffset = toCesiumCartesian3(rest.eyeOffset);
+  }
   return rest;
 }
 

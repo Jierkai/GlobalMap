@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createCgxViewer } from '@cgx/core';
 import { Layers } from '../src/manager/LayerManager.js';
-import { createImageryLayer } from '../src/layer/ImageryLayer.js';
+import { ImageryLayer } from '../src/layer/ImageryLayer.js';
 import { createXyzProvider } from '../src/provider/xyz.js';
 import { effect } from '@cgx/reactive';
 
@@ -11,7 +11,7 @@ describe('LayerManager and Layers', () => {
     const layerManager = viewer.use(Layers);
 
     const provider = createXyzProvider({ url: 'http://test' });
-    const layer = createImageryLayer({ id: 'test-layer', provider });
+    const layer = new ImageryLayer({ id: 'test-layer', provider });
 
     const listSignal = layerManager.list();
     expect(listSignal().length).toBe(0);
@@ -28,8 +28,8 @@ describe('LayerManager and Layers', () => {
     const viewer = createCgxViewer({ container: 'app', adapter: {} });
     const layerManager = viewer.use(Layers);
 
-    const l1 = createImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });
-    const l2 = createImageryLayer({ id: 'l2', provider: createXyzProvider({ url: '' }) });
+    const l1 = new ImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });
+    const l2 = new ImageryLayer({ id: 'l2', provider: createXyzProvider({ url: '' }) });
     
     layerManager.add(l1);
     layerManager.add(l2);
@@ -41,7 +41,7 @@ describe('LayerManager and Layers', () => {
   });
 
   it('should trigger reactivity on visible/opacity changes', () => {
-    const layer = createImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });
+    const layer = new ImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });
     let visibleVal = false;
     
     const disposer = effect(() => {

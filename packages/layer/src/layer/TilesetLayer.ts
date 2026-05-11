@@ -1,4 +1,4 @@
-import { createDataLayer, type DataLayer } from './DataLayer.js';
+import { DataLayer, type DataLayerOptions } from './DataLayer.js';
 
 /**
  * 3D Tileset 图层配置选项
@@ -17,38 +17,34 @@ export interface TilesetLayerOptions {
 }
 
 /**
- * 3D Tileset 图层接口
- */
-export interface TilesetLayer extends DataLayer {
-  readonly type: 'data';
-  readonly sourceType: 'tileset';
-  /** Tileset 资源 URL */
-  readonly url: string;
-}
-
-/**
- * 创建 3D Tileset 图层
+ * 3D Tileset 图层领域类
  *
  * @description
- * 创建一个 3D Tileset 图层领域对象。实际渲染由 EngineAdapter 消费 RenderSpec 完成。
+ * 继承自 {@link DataLayer}，以 `tileset` 作为固定数据源类型，
+ * 专门用于承载 3D Tiles 格式的数据（如 tileset.json）。
  *
- * @param opts - Tileset 图层配置选项
- * @returns TilesetLayer 实例
+ * @example
+ * ```ts
+ * const layer = new TilesetLayer({
+ *   url: 'https://example.com/tileset.json',
+ * });
+ * ```
  */
-export function createTilesetLayer(opts: TilesetLayerOptions): TilesetLayer {
-  const layer = createDataLayer({
-    sourceType: 'tileset',
-    payload: { url: opts.url },
-    ...(opts.id !== undefined ? { id: opts.id } : {}),
-    ...(opts.visible !== undefined ? { visible: opts.visible } : {}),
-    ...(opts.opacity !== undefined ? { opacity: opts.opacity } : {}),
-    ...(opts.zIndex !== undefined ? { zIndex: opts.zIndex } : {}),
-  });
+export class TilesetLayer extends DataLayer {
+  /** Tileset 资源 URL */
+  readonly url: string;
 
-  return {
-    ...layer,
-    type: 'data',
-    sourceType: 'tileset',
-    url: opts.url,
-  } as TilesetLayer;
+  constructor(opts: TilesetLayerOptions) {
+    const dataOpts: DataLayerOptions = {
+      sourceType: 'tileset',
+      payload: { url: opts.url },
+    };
+    if (opts.id !== undefined) dataOpts.id = opts.id;
+    if (opts.visible !== undefined) dataOpts.visible = opts.visible;
+    if (opts.opacity !== undefined) dataOpts.opacity = opts.opacity;
+    if (opts.zIndex !== undefined) dataOpts.zIndex = opts.zIndex;
+
+    super(dataOpts);
+    this.url = opts.url;
+  }
 }

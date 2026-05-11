@@ -18,8 +18,8 @@ const gaodeProvider = createGaodeProvider({
 });
 
 // 配合 layer 模块生成影像图层
-import { createImageryLayer } from '@cgx/layer';
-const amapLayer = createImageryLayer({
+import { ImageryLayer } from '@cgx/layer';
+const amapLayer = new ImageryLayer({
   id: 'amap-base',
   provider: gaodeProvider
 });

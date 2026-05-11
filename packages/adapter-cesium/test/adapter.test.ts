@@ -99,7 +99,7 @@ describe('createCesiumAdapter', () => {
     expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
       id: 'point-with-label',
       point: { pixelSize: 12 },
-      label: { text: 'Point label', pixelOffset: [0, -16] },
+      label: { text: 'Point label', pixelOffset: expect.objectContaining({ x: 0, y: -16 }) },
     }));
     expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
       id: 'text-only',
@@ -165,6 +165,35 @@ describe('createCesiumAdapter', () => {
       expect.objectContaining({ id: 'p1', text: 'P1' }),
       expect.objectContaining({ id: 'text-1', text: 'Text' }),
     ]));
+
+    handle?.dispose();
+    await adapter.dispose?.();
+  });
+
+  it('normalizes label screen vector tuples for Cesium', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container');
+    const viewer = adapter.unsafeNative?.() as any;
+
+    const handle = adapter.mountFeature?.({
+      id: 'offset-label',
+      kind: 'point',
+      position: [120, 30],
+      label: {
+        text: 'Offset label',
+        pixelOffset: [4, -20],
+        eyeOffset: [0, 0, 8],
+      },
+    });
+
+    await Promise.resolve();
+    expect(viewer?.entities.add).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'offset-label',
+      label: expect.objectContaining({
+        pixelOffset: expect.objectContaining({ x: 4, y: -20 }),
+        eyeOffset: expect.objectContaining({ x: 0, y: 0, z: 8 }),
+      }),
+    }));
 
     handle?.dispose();
     await adapter.dispose?.();

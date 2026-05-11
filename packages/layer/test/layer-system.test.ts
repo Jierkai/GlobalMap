@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { EngineAdapter, FeatureRenderSpec, LayerRenderSpec, Updatable } from '@cgx/core';
 import {
-  createDataLayer,
-  createGeoJsonLayer,
-  createGraphicLayer,
-  createPointCloudLayer,
-  createTilesetLayer,
-  createVectorLayer,
+  DataLayer,
+  GeoJsonLayer,
+  GraphicLayer,
+  PointCloudLayer,
+  TilesetLayer,
+  VectorLayer,
 } from '../src/index.js';
 
 function createMountHandle<T>(): Updatable<T> {
@@ -40,13 +40,13 @@ function createAdapter() {
 
 describe('GraphicLayer', () => {
   it('manages graphics and exports clustering/model renderMode in render specs', () => {
-    const layer = createGraphicLayer({
+    const layer = new GraphicLayer({
       id: 'graphics',
       clustering: { enabled: true, pixelRange: 24, minimumClusterSize: 3 },
       renderMode: 'primitive',
     });
 
-    const point = layer.addPoint({ id: 'p1', position: [120, 30], pixelSize: 12, label: { text: 'P1' } });
+    const point = layer.addPoint({ id: 'p1', position: [120, 30], pixelSize: 12, label: { text: 'P1' } } as any);
     layer.addPolyline({ id: 'line-1', positions: [[120, 30], [121, 31]] });
     const model = layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb', renderMode: 'primitive' });
     const text = layer.addText({ id: 't1', position: [121, 31], text: 'Hello' });
@@ -56,20 +56,20 @@ describe('GraphicLayer', () => {
     expect(layer.find((graphic) => graphic.id === 't1')).toBe(text);
     expect(layer.list()).toHaveLength(4);
 
-    const spec = layer.toRenderSpec();
+    const spec = layer.toRenderSpec() as any;
     expect(spec.kind).toBe('graphic');
     expect(spec.clustering).toEqual({ enabled: true, pixelRange: 24, minimumClusterSize: 3 });
     expect(spec.renderMode).toBe('primitive');
     expect(spec.graphics).toHaveLength(4);
-    expect(spec.graphics?.find((graphic) => graphic.id === 'p1')).toMatchObject({
+    expect(spec.graphics?.find((graphic: any) => graphic.id === 'p1')).toMatchObject({
       kind: 'point',
       label: { text: 'P1' },
     });
-    expect(spec.graphics?.find((graphic) => graphic.id === 't1')).toMatchObject({
+    expect(spec.graphics?.find((graphic: any) => graphic.id === 't1')).toMatchObject({
       kind: 'text',
       label: { text: 'Hello' },
     });
-    expect(spec.graphics?.find((graphic) => graphic.id === 'm1')).toMatchObject({
+    expect(spec.graphics?.find((graphic: any) => graphic.id === 'm1')).toMatchObject({
       kind: 'model',
       model: { uri: '/model.glb', scale: 1, renderMode: 'primitive' },
     });
@@ -77,7 +77,7 @@ describe('GraphicLayer', () => {
 
   it('mounts graphic layers through the layer channel and updates on visibility/list changes', () => {
     const { adapter, layerHandles } = createAdapter();
-    const layer = createGraphicLayer({ id: 'graphics' });
+    const layer = new GraphicLayer({ id: 'graphics' });
     layer.addPoint({ id: 'p1', position: [120, 30] });
     layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb' });
 
@@ -112,7 +112,7 @@ describe('GraphicLayer', () => {
       }),
       unmountFeature: vi.fn(),
     };
-    const layer = createGraphicLayer({ id: 'graphics' });
+    const layer = new GraphicLayer({ id: 'graphics' });
     layer.addPoint({ id: 'p1', position: [120, 30] });
     layer.addModel({ id: 'm1', position: [120, 30, 100], uri: '/model.glb' });
 
@@ -126,7 +126,7 @@ describe('GraphicLayer', () => {
 
 describe('DataLayer family', () => {
   it('builds generic data layer specs without forcing subtype-specific core kinds', () => {
-    const layer = createDataLayer({
+    const layer = new DataLayer({
       id: 'data-1',
       sourceType: 'custom',
       payload: { url: '/data.bin' },
@@ -147,10 +147,10 @@ describe('DataLayer family', () => {
   });
 
   it('maps GeoJSON, tileset, point cloud and legacy vector into the data-layer branch', () => {
-    const geo = createGeoJsonLayer({ id: 'geo', data: { type: 'FeatureCollection', features: [] } });
-    const tileset = createTilesetLayer({ id: 'tileset', url: 'https://example.com/tileset.json' });
-    const pointCloud = createPointCloudLayer({ id: 'pc', url: 'https://example.com/point-cloud.pnts' });
-    const vector = createVectorLayer({ id: 'legacy-vector', data: { type: 'FeatureCollection', features: [] } });
+    const geo = new GeoJsonLayer({ id: 'geo', data: { type: 'FeatureCollection', features: [] } });
+    const tileset = new TilesetLayer({ id: 'tileset', url: 'https://example.com/tileset.json' });
+    const pointCloud = new PointCloudLayer({ id: 'pc', url: 'https://example.com/point-cloud.pnts' });
+    const vector = new VectorLayer({ id: 'legacy-vector', data: { type: 'FeatureCollection', features: [] } });
 
     expect(geo.sourceType).toBe('geojson');
     expect(geo.toRenderSpec()).toMatchObject({ kind: 'data', sourceType: 'geojson' });
@@ -176,7 +176,7 @@ describe('DataLayer family', () => {
 
   it('mounts through the layer channel and forwards reactive updates to the handle', () => {
     const { adapter, layerHandles } = createAdapter();
-    const layer = createTilesetLayer({ id: 'tileset', url: 'https://example.com/tileset.json' });
+    const layer = new TilesetLayer({ id: 'tileset', url: 'https://example.com/tileset.json' });
 
     layer._mount?.(adapter);
     expect(adapter.mountLayer).toHaveBeenCalledTimes(1);
