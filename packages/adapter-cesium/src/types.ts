@@ -11,8 +11,6 @@
  * - 屏幕空间事件类型定义
  */
 
-import type Cesium from 'cesium';
-
 /** 不透明类型标签的唯一 Symbol 声明 */
 declare const __opaqueTag: unique symbol;
 
@@ -55,15 +53,40 @@ export interface LngLat {
   alt?: number;
 }
 
+/** 场景模式。 */
+export type SceneModeOption = '3d' | '2d' | 'columbus';
+
 /**
- * Viewer 配置选项接口
- * 
+ * Viewer 配置选项接口。
+ *
  * @description
- * 扩展自 Cesium.Viewer.ConstructorOptions，添加了自定义的图层配置。
+ * 只暴露 Cgx 自己的中立配置，不把 Cesium 原生类型扩散到公开类型中。
  */
-export interface ViewerOptions extends Cesium.Viewer.ConstructorOptions {
-  /** 预配置的影像图层数组 */
-  layers?: Cesium.ImageryLayer[];
+export interface ViewerOptions {
+  /** 是否显示底图选择器。 */
+  baseLayerPicker?: boolean;
+  /** 是否启动动画时钟。 */
+  shouldAnimate?: boolean;
+  /** 是否显示时间轴。 */
+  timeline?: boolean;
+  /** 是否显示信息框。 */
+  infoBox?: boolean;
+  /** 是否显示地理编码控件。 */
+  geocoder?: boolean;
+  /** 是否显示主页按钮。 */
+  homeButton?: boolean;
+  /** 是否显示导航帮助按钮。 */
+  navigationHelpButton?: boolean;
+  /** 是否显示场景模式切换器。 */
+  sceneModePicker?: boolean;
+  /** 初始场景模式。 */
+  sceneMode?: SceneModeOption;
+  /** 是否启用按需渲染。 */
+  requestRenderMode?: boolean;
+  /** 目标帧率。 */
+  targetFrameRate?: number;
+  /** 是否只创建 3D 场景资源。 */
+  scene3DOnly?: boolean;
 }
 
 /**

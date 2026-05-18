@@ -1,0 +1,40 @@
+{
+  "name": "cgx",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cgx/adapter-cesium": "workspace:*",
+    "@cgx/core": "workspace:*",
+    "@cgx/layer": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.2",
+    "vitest": "^2.1.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgx/cgx.git",
+    "directory": "packages/cgx"
+  },
+  "author": "CGX Team",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

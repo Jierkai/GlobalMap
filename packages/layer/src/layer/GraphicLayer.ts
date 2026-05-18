@@ -78,7 +78,8 @@ export interface GraphicLayerOptions {
  * layer.addPoint({ id: 'p1', position: [120, 30] });
  * layer.addPolyline({ id: 'line-1', positions: [[120, 30], [121, 31]] });
  *
- * viewer.layers.add(layer);
+ * const layers = viewer.use(Layers);
+ * layers.add(layer);
  * ```
  */
 export class GraphicLayer extends BaseLayer {

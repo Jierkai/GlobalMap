@@ -16,6 +16,13 @@ export interface Emitter<TEvents extends object> {
   emit<K extends keyof TEvents>(event: K, payload: TEvents[K]): void;
 }
 
+/** 事件监听器抛错时的错误边界回调。 */
+export type ListenerErrorHandler<TEvents extends object> = (event: keyof TEvents, error: Error) => void;
+
+function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
+}
+
 /**
  * 强类型事件派发器的具体实现。
  * 能够在单个监听器发生异常时隔离错误，避免阻塞其它监听器的执行。
@@ -23,6 +30,8 @@ export interface Emitter<TEvents extends object> {
  */
 export class TypedEmitter<TEvents extends object> implements Emitter<TEvents> {
   private listeners: Map<keyof TEvents, Set<(payload: unknown) => void>> = new Map();
+
+  constructor(private readonly onListenerError?: ListenerErrorHandler<TEvents>) {}
 
   on<K extends keyof TEvents>(event: K, handler: (payload: TEvents[K]) => void): Off {
     if (!this.listeners.has(event)) {
@@ -56,7 +65,9 @@ export class TypedEmitter<TEvents extends object> implements Emitter<TEvents> {
       try {
         handler(payload);
       } catch (err) {
-        console.error(`Error in event listener for ${String(event)}:`, err);
+        const error = toError(err);
+        console.error(`Error in event listener for ${String(event)}:`, error);
+        this.onListenerError?.(event, error);
       }
     }
   }

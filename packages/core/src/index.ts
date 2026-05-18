@@ -1,4 +1,4 @@
-export { createCgxViewer, type CgxViewer, type CgxViewerOptions, type ViewerStatus, type TypedEvents } from './viewer/CgxViewer.js';
+export { CgxViewer, createViewer, type CgxViewerOptions, type ViewerStatus, type TypedEvents } from './viewer/CgxViewer.js';
 export { type Capability, CameraOps, ClockOps, InputOps } from './capability/Capability.js';
 export { createVitalsHud, type VitalsHud, type VitalsConfig } from './vitals/VitalsHud.js';
 export { CgxError, ErrorCodes } from './errors/CgxError.js';

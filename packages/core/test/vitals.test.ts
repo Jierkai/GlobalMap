@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createCgxViewer } from '../src/viewer/CgxViewer.js';
+import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { createVitalsHud } from '../src/vitals/VitalsHud.js';
 
 describe('VitalsHud', () => {
@@ -12,7 +12,7 @@ describe('VitalsHud', () => {
   });
 
   it('should not attach if not dev and not enabled', () => {
-    const viewer = createCgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app', adapter: {} });
     // Assuming Vite test runs with import.meta.env.DEV = true by default, 
     // so we disable it explicitly, or we override.
     // By default, let's explicitly disable to see if it attaches.
@@ -24,7 +24,7 @@ describe('VitalsHud', () => {
   });
 
   it('should clean up DOM upon detach', () => {
-    const viewer = createCgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app', adapter: {} });
     const hud = createVitalsHud(viewer, { enabled: true });
     
     expect(document.querySelector('.cgx-vitals-hud')).not.toBeNull();

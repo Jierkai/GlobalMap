@@ -13,10 +13,14 @@
 
 ## 示例
 ```typescript
-import { createCgxViewer, defineFsm } from '@cgx/core';
+import { CgxViewer, defineFsm, type EngineAdapter } from '@cgx/core';
 
 // 创建核心的 Viewer 实例（通常由特定引擎如 Cesium 的适配器包装使用）
-const viewer = createCgxViewer('map-container');
+const adapter: EngineAdapter = {};
+const viewer = new CgxViewer({
+  container: 'map-container',
+  adapter,
+});
 
 // 定义状态机
 const fsm = defineFsm({

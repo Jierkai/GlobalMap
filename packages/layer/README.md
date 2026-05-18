@@ -19,8 +19,16 @@
 ## 使用示例
 
 ```typescript
-import { ImageryLayer } from '@cgx/layer';
+import { CgxViewer } from '@cgx/core';
+import { createCesiumAdapter } from '@cgx/adapter-cesium';
+import { ImageryLayer, Layers } from '@cgx/layer';
 import { createXyzProvider } from '@cgx/layer/provider/xyz';
+
+const viewer = new CgxViewer({
+  container: 'map',
+  adapter: createCesiumAdapter(),
+});
+const layers = viewer.use(Layers);
 
 // 创建影像图层
 const layer = new ImageryLayer({
@@ -32,7 +40,7 @@ const layer = new ImageryLayer({
 });
 
 // 将其加至图层管理器或具体业务流中
-viewer.layers.add(layer);
+layers.add(layer);
 ```
 
 ### 图形图层
@@ -58,7 +66,7 @@ graphics.addText({
   text: 'Only text'
 });
 
-viewer.layers.add(graphics);
+layers.add(graphics);
 ```
 
 ## 类继承关系

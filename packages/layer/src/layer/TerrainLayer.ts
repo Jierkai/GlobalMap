@@ -26,7 +26,8 @@ export interface TerrainLayerOptions {
  * const layer = new TerrainLayer({
  *   provider: someTerrainProvider,
  * });
- * viewer.layers.add(layer);
+ * const layers = viewer.use(Layers);
+ * layers.add(layer);
  * ```
  */
 export class TerrainLayer extends BaseLayer {

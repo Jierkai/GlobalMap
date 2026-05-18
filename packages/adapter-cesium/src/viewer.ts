@@ -25,6 +25,13 @@ import type {
   NativeTerrainProvider 
 } from './types';
 
+function toCesiumSceneMode(mode: ViewerOptions['sceneMode']): Cesium.SceneMode | undefined {
+  if (mode === '2d') return Cesium.SceneMode.SCENE2D;
+  if (mode === 'columbus') return Cesium.SceneMode.COLUMBUS_VIEW;
+  if (mode === '3d') return Cesium.SceneMode.SCENE3D;
+  return undefined;
+}
+
 /**
  * Viewer 句柄与原生 Viewer 实例的映射表
  * 
@@ -91,7 +98,11 @@ export function createViewer(container: HTMLElement | string, options: ViewerOpt
     geocoder: options.geocoder ?? false,                    // 地理编码器，默认禁用
     homeButton: options.homeButton ?? false,                // 主页按钮，默认禁用
     navigationHelpButton: options.navigationHelpButton ?? false, // 导航帮助按钮，默认禁用
-    sceneModePicker: options.sceneModePicker ?? false       // 场景模式选择器，默认禁用
+    sceneModePicker: options.sceneModePicker ?? false,      // 场景模式选择器，默认禁用
+    sceneMode: toCesiumSceneMode(options.sceneMode),
+    requestRenderMode: options.requestRenderMode,
+    targetFrameRate: options.targetFrameRate,
+    scene3DOnly: options.scene3DOnly,
   });
 
   // 创建句柄对象，提供对 Viewer 的抽象访问

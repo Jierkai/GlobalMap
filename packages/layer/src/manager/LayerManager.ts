@@ -16,6 +16,8 @@ export interface LayerManagerApi {
   moveTo(layer: Layer | string, index: number): void;
   /** 返回一个持有已管理的图层列表的响应式信号。 */
   list(): { (): Layer[]; (v: Layer[]): void };
+  /** 销毁管理器并卸载所有已管理图层。 */
+  dispose(): void;
 }
 
 interface InternalLayer extends Layer {
@@ -70,6 +72,12 @@ export const Layers: Capability<LayerManagerApi> = {
       },
       list() {
         return layersSignal;
+      },
+      dispose() {
+        const current = [...layersSignal()];
+        for (const layer of current) {
+          api.remove(layer);
+        }
       }
     };
     return api;

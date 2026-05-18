@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createCgxViewer } from '@cgx/core';
+import { CgxViewer } from '@cgx/core';
 import { Layers } from '../src/manager/LayerManager.js';
 import { ImageryLayer } from '../src/layer/ImageryLayer.js';
 import { createXyzProvider } from '../src/provider/xyz.js';
@@ -7,7 +7,7 @@ import { effect } from '@cgx/reactive';
 
 describe('LayerManager and Layers', () => {
   it('should manage layer addition and removal', async () => {
-    const viewer = createCgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app', adapter: {} });
     const layerManager = viewer.use(Layers);
 
     const provider = createXyzProvider({ url: 'http://test' });
@@ -25,7 +25,7 @@ describe('LayerManager and Layers', () => {
   });
 
   it('should reorder layers', () => {
-    const viewer = createCgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app', adapter: {} });
     const layerManager = viewer.use(Layers);
 
     const l1 = new ImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });

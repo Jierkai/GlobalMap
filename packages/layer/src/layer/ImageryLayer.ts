@@ -31,7 +31,8 @@ export interface ImageryLayerOptions {
  * const layer = new ImageryLayer({
  *   provider: createXyzProvider({ url: 'https://example.com/{z}/{x}/{y}.png' }),
  * });
- * viewer.layers.add(layer);
+ * const layers = viewer.use(Layers);
+ * layers.add(layer);
  * ```
  */
 export class ImageryLayer extends BaseLayer {

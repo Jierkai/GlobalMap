@@ -11,7 +11,7 @@ import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker
 import * as CgxCesium from '@cgx/adapter-cesium';
 import { createCesiumAdapter } from '@cgx/adapter-cesium';
 import * as CgxCore from '@cgx/core';
-import { createCgxViewer, type CgxViewer, type EngineAdapter } from '@cgx/core';
+import { CgxViewer, type EngineAdapter } from '@cgx/core';
 
 type Cleanup = () => void | Promise<void>;
 
@@ -328,12 +328,12 @@ async function runCode(): Promise<void> {
     previewRoot.append(container);
 
     const adapter = createCesiumAdapter({ shouldAnimate: true });
-    const viewer = createCgxViewer({ container, adapter });
+    const viewer = new CgxViewer({ container, adapter });
     runtime.viewer = viewer;
 
     await viewer.ready();
 
-    const cesiumViewer = adapter.unsafeNative?.() as Cesium.Viewer | undefined;
+    const cesiumViewer = viewer.unsafeNative() as Cesium.Viewer | undefined;
     if (!cesiumViewer) {
       throw new Error('Cesium Viewer was not created.');
     }

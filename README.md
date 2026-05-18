@@ -58,22 +58,19 @@ npm install @cgx/core @cgx/adapter-cesium
 ### 创建 Viewer
 
 ```typescript
-import { createCgxViewer } from '@cgx/core'
-import { CesiumAdapter } from '@cgx/adapter-cesium'
+import { CgxViewer } from '@cgx/core'
+import { createCesiumAdapter } from '@cgx/adapter-cesium'
 
-const viewer = createCgxViewer({
+const viewer = new CgxViewer({
   container: 'cesiumContainer',
-  adapter: new CesiumAdapter(),
-  baseLayer: {
-    type: 'xyz',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-  }
+  adapter: createCesiumAdapter({ shouldAnimate: true })
 })
 
-// 订阅状态变化
 viewer.on('ready', () => {
   console.log('Viewer is ready!')
 })
+
+await viewer.ready()
 ```
 
 ### 响应式状态

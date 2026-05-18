@@ -24,7 +24,9 @@ deob-project/
 *.deob.js
 source/
 .omc
-doc/
+.omx
+docs/
+
 legacy/
 .pnpm-store/
 plans/
