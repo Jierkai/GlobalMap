@@ -9,8 +9,8 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@cgx/adapter-cesium": "workspace:*",
     "@cgx/core": "workspace:*",
+    "@cgx/layer": "workspace:*",
     "cesium": "^1.139.0",
     "monaco-editor": "^0.52.2"
   },

@@ -28,10 +28,18 @@ export class LayerBridge {
    * @param provider - Cesium 影像提供者实例（如 UrlTemplateImageryProvider、WebMapServiceImageryProvider 等）
    * @returns {Cesium.ImageryLayer | undefined} 成功返回创建的 ImageryLayer，Viewer 无效时返回 undefined
    */
-  static addImageryLayer(handle: CesiumViewerHandle, provider: Cesium.ImageryProvider): Cesium.ImageryLayer | undefined {
+  static addImageryLayer(
+    handle: CesiumViewerHandle,
+    provider: Cesium.ImageryProvider | Promise<Cesium.ImageryProvider>,
+  ): Cesium.ImageryLayer | undefined {
     const viewer = _getInternalViewer(handle);
     if (!viewer) return undefined;
-    return viewer.imageryLayers.addImageryProvider(provider);
+    if (provider && typeof (provider as Promise<Cesium.ImageryProvider>).then === 'function') {
+      const layer = Cesium.ImageryLayer.fromProviderAsync(provider as Promise<Cesium.ImageryProvider>);
+      viewer.imageryLayers.add(layer);
+      return layer;
+    }
+    return viewer.imageryLayers.addImageryProvider(provider as Cesium.ImageryProvider);
   }
 
   /**

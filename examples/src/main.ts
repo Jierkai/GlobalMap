@@ -8,10 +8,8 @@ import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
-import * as CgxCesium from '@cgx/adapter-cesium';
-import { createCesiumAdapter } from '@cgx/adapter-cesium';
-import * as CgxCore from '@cgx/core';
-import { CgxViewer, type EngineAdapter } from '@cgx/core';
+import { CgxViewer } from '@cgx/core';
+import { Layers, GraphicLayer, GeoJsonLayer } from '@cgx/layer';
 
 type Cleanup = () => void | Promise<void>;
 
@@ -29,13 +27,11 @@ interface RuntimeState {
 interface RuntimeContext {
   Cesium: typeof Cesium;
   viewer: CgxViewer;
-  adapter: EngineAdapter;
   cesiumViewer: Cesium.Viewer;
   container: HTMLElement;
-  cgx: {
-    core: typeof CgxCore;
-    cesium: typeof CgxCesium;
-  };
+  Layers: typeof Layers;
+  GraphicLayer: typeof GraphicLayer;
+  GeoJsonLayer: typeof GeoJsonLayer;
 }
 
 declare global {
@@ -54,16 +50,14 @@ cesiumViewer.imageryLayers.removeAll();
 cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#2d3327');
 cesiumViewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#111315');
 
-const point = adapter.mountFeature?.({
+const layers = viewer.use(Layers);
+const graphics = new GraphicLayer({ id: 'cgx-demo-graphics' });
+
+graphics.addPoint({
   id: 'beijing-marker',
-  kind: 'point',
   position: center,
-  point: {
-    pixelSize: 14,
-    color: Cesium.Color.fromCssColorString('#ffcf5a'),
-    outlineColor: Cesium.Color.BLACK,
-    outlineWidth: 2,
-  },
+  pixelSize: 14,
+  color: Cesium.Color.fromCssColorString('#ffcf5a'),
   label: {
     text: 'CGX Marker',
     pixelOffset: [0, -24],
@@ -73,19 +67,18 @@ const point = adapter.mountFeature?.({
   },
 });
 
-const route = adapter.mountFeature?.({
+graphics.addPolyline({
   id: 'route',
-  kind: 'polyline',
   positions: [
     [116.25, 39.82, 0],
     [116.39, 39.91, 0],
     [116.55, 40.01, 0],
   ],
-  polyline: {
-    width: 4,
-    material: Cesium.Color.fromCssColorString('#4fd1c5'),
-  },
+  width: 4,
+  material: Cesium.Color.fromCssColorString('#4fd1c5'),
 });
+
+layers.add(graphics);
 
 cesiumViewer.camera.flyTo({
   destination: Cesium.Cartesian3.fromDegrees(116.391, 39.907, 1800000),
@@ -98,8 +91,7 @@ cesiumViewer.camera.flyTo({
 });
 
 return () => {
-  point?.dispose();
-  route?.dispose();
+  layers.remove(graphics);
 };`,
   },
   {
@@ -170,24 +162,24 @@ const geojson = {
   ],
 };
 
-const layer = adapter.mountLayer?.({
+const layers = viewer.use(Layers);
+const layer = new GeoJsonLayer({
   id: 'demo-geojson',
-  kind: 'data',
-  sourceType: 'geojson',
-  payload: geojson,
+  data: geojson,
   options: {
     stroke: Cesium.Color.fromCssColorString('#22c55e'),
     fill: Cesium.Color.fromCssColorString('#22c55e').withAlpha(0.32),
     strokeWidth: 3,
   },
 });
+layers.add(layer);
 
 cesiumViewer.camera.flyTo({
   destination: Cesium.Cartesian3.fromDegrees(114.02, 22.62, 420000),
   duration: 0,
 });
 
-return () => layer?.dispose();`,
+return () => layers.remove(layer);`,
   },
 ];
 
@@ -327,13 +319,12 @@ async function runCode(): Promise<void> {
     container.className = 'cesium-stage';
     previewRoot.append(container);
 
-    const adapter = createCesiumAdapter({ shouldAnimate: true });
-    const viewer = new CgxViewer({ container, adapter });
+    const viewer = new CgxViewer({ container, cesium: { shouldAnimate: true } });
     runtime.viewer = viewer;
 
     await viewer.ready();
 
-    const cesiumViewer = viewer.unsafeNative() as Cesium.Viewer | undefined;
+    const cesiumViewer = viewer.getCesiumViewer() as Cesium.Viewer | undefined;
     if (!cesiumViewer) {
       throw new Error('Cesium Viewer was not created.');
     }
@@ -343,13 +334,11 @@ async function runCode(): Promise<void> {
     const context: RuntimeContext = {
       Cesium,
       viewer,
-      adapter,
       cesiumViewer,
       container,
-      cgx: {
-        core: CgxCore,
-        cesium: CgxCesium,
-      },
+      Layers,
+      GraphicLayer,
+      GeoJsonLayer,
     };
     const cleanup = await executeUserCode(codeEditor.getValue(), context);
 
@@ -391,20 +380,22 @@ async function executeUserCode(code: string, context: RuntimeContext): Promise<u
   const fn = new AsyncFunction(
     'Cesium',
     'viewer',
-    'adapter',
     'cesiumViewer',
     'container',
-    'cgx',
+    'Layers',
+    'GraphicLayer',
+    'GeoJsonLayer',
     `${code}\n//# sourceURL=cgx-sandcastle-user-code.js`,
   );
 
   return fn(
     context.Cesium,
     context.viewer,
-    context.adapter,
     context.cesiumViewer,
     context.container,
-    context.cgx,
+    context.Layers,
+    context.GraphicLayer,
+    context.GeoJsonLayer,
   );
 }
 

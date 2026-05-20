@@ -17,6 +17,7 @@
     "size": "size-limit"
   },
   "dependencies": {
+    "@cgx/adapter-cesium": "workspace:*",
     "@cgx/reactive": "workspace:*"
   },
   "devDependencies": {

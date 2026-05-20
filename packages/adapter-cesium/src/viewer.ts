@@ -25,13 +25,6 @@ import type {
   NativeTerrainProvider 
 } from './types';
 
-function toCesiumSceneMode(mode: ViewerOptions['sceneMode']): Cesium.SceneMode | undefined {
-  if (mode === '2d') return Cesium.SceneMode.SCENE2D;
-  if (mode === 'columbus') return Cesium.SceneMode.COLUMBUS_VIEW;
-  if (mode === '3d') return Cesium.SceneMode.SCENE3D;
-  return undefined;
-}
-
 /**
  * Viewer 句柄与原生 Viewer 实例的映射表
  * 
@@ -51,27 +44,20 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  * 工厂函数，用于创建配置好的 Cesium Viewer 实例。
  * 返回一个 CesiumViewerHandle 句柄对象，提供对 Viewer 的抽象访问。
  * 
- * 该函数会根据传入的配置选项初始化 Viewer，默认禁用大部分 UI 组件，
- * 以提供一个干净的 3D 场景。
+ * 该函数直接透传 Cesium Viewer 原生配置，不维护业务层配置别名。
  * 
  * @param {HTMLElement | string} container - Viewer 容器元素或元素 ID
- * @param {ViewerOptions} [options={}] - Viewer 配置选项
- * @param {boolean} [options.baseLayerPicker=false] - 是否显示底图选择器
- * @param {boolean} [options.shouldAnimate=false] - 是否启用动画
- * @param {boolean} [options.timeline=false] - 是否显示时间轴
- * @param {boolean} [options.infoBox=false] - 是否显示信息框
- * @param {boolean} [options.geocoder=false] - 是否显示地理编码器
- * @param {boolean} [options.homeButton=false] - 是否显示主页按钮
- * @param {boolean} [options.navigationHelpButton=false] - 是否显示导航帮助按钮
- * @param {boolean} [options.sceneModePicker=false] - 是否显示场景模式选择器
+ * @param {ViewerOptions} [options={}] - Cesium Viewer 原生构造配置
  * @returns {CesiumViewerHandle} Viewer 句柄对象
  * 
  * @example
  * ```typescript
  * // 使用元素 ID 创建
  * const handle = createViewer('cesiumContainer', {
+ *   animation: true,
  *   shouldAnimate: true,
- *   timeline: true
+ *   timeline: true,
+ *   sceneMode: Cesium.SceneMode.SCENE3D
  * });
  * 
  * // 使用 DOM 元素创建
@@ -89,21 +75,7 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  * ```
  */
 export function createViewer(container: HTMLElement | string, options: ViewerOptions = {}): CesiumViewerHandle {
-  // 创建 Cesium Viewer 实例，应用配置选项
-  const viewer = new Cesium.Viewer(container, {
-    baseLayerPicker: options.baseLayerPicker ?? false,      // 底图选择器，默认禁用
-    animation: options.shouldAnimate ?? false,              // 动画控件，默认禁用
-    timeline: options.timeline ?? false,                    // 时间轴，默认禁用
-    infoBox: options.infoBox ?? false,                      // 信息框，默认禁用
-    geocoder: options.geocoder ?? false,                    // 地理编码器，默认禁用
-    homeButton: options.homeButton ?? false,                // 主页按钮，默认禁用
-    navigationHelpButton: options.navigationHelpButton ?? false, // 导航帮助按钮，默认禁用
-    sceneModePicker: options.sceneModePicker ?? false,      // 场景模式选择器，默认禁用
-    sceneMode: toCesiumSceneMode(options.sceneMode),
-    requestRenderMode: options.requestRenderMode,
-    targetFrameRate: options.targetFrameRate,
-    scene3DOnly: options.scene3DOnly,
-  });
+  const viewer = new Cesium.Viewer(container, options);
 
   // 创建句柄对象，提供对 Viewer 的抽象访问
   const handle: CesiumViewerHandle = {

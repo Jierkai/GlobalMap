@@ -1,17 +1,33 @@
 import { signal, type ReadonlySignal } from '@cgx/reactive';
+import {
+  createCesiumRuntime,
+  createViewer as createCesiumViewer,
+  type CesiumRuntime,
+  type CesiumViewerHandle,
+  type CesiumViewerOptions,
+  type LayerRenderSpec,
+} from '@cgx/adapter-cesium';
 import { TypedEmitter, type Off } from '../typed-events/Emitter.js';
 import { CgxError, ErrorCodes } from '../errors/CgxError.js';
 import type { Capability } from '../capability/Capability.js';
-import type { EngineAdapter } from '../adapter/EngineAdapter.js';
+import type { BasemapSpec, SceneOptions, TerrainOptions, ViewerOptions } from '../types.js';
 
 /**
  * 创建 CgxViewer 实例的配置项。
  */
 export interface CgxViewerOptions {
-  /** 视图将要挂载的容器元素或其 ID。 */
+  /** Viewer 容器元素或元素 ID。 */
   container: string | HTMLElement;
-  /** L1 层适配器，负责将调用委派给底层引擎（如 Cesium）。 */
-  adapter: EngineAdapter;
+  /** Cesium Viewer 原生构造配置。 */
+  cesium?: CesiumViewerOptions;
+  /** 场景初始化配置。 */
+  scene?: SceneOptions;
+  /** 地形初始化配置。 */
+  terrain?: TerrainOptions;
+  /** 初始化底图配置。 */
+  basemaps?: BasemapSpec[];
+  /** 初始化图层配置。 */
+  layers?: LayerRenderSpec[];
 }
 
 /** 表示视图生命周期的状态。 */
@@ -46,13 +62,14 @@ export class CgxViewer {
   readonly id: string;
   /** 持有当前生命周期状态的响应式信号。 */
   readonly status: ViewerStatusSignal;
-  /** L1 层适配器实例。 */
-  readonly adapter: EngineAdapter;
+  /** Cesium runtime 实例。 */
+  private readonly runtime: CesiumRuntime;
+  private readonly handle: CesiumViewerHandle;
 
   private readonly emitter: TypedEmitter<TypedEvents>;
   private readonly installedCapabilities = new Map<string, InstalledCapabilityRecord>();
   private readonly uncaughtHandlers = new Set<(error: Error) => void>();
-  private readonly container: string | HTMLElement;
+  readonly options: ViewerOptions;
   private readonly _status = signal<ViewerStatus>('idle');
 
   private readyPromise: Promise<void> | null = null;
@@ -61,10 +78,20 @@ export class CgxViewer {
   private isDisposing = false;
 
   constructor(opts: CgxViewerOptions) {
+    const { container } = opts;
+    if (typeof container !== 'string' && !(container instanceof HTMLElement)) {
+      throw new CgxError(ErrorCodes.INVALID_ARGUMENT, 'Container must be an HTMLElement or a string ID');
+    }
+    if (typeof container === 'string' && container.trim() === '') {
+      throw new CgxError(ErrorCodes.INVALID_ARGUMENT, 'Container must be an HTMLElement or a string ID');
+    }
     this.id = crypto.randomUUID();
     this.status = this._status;
-    this.adapter = opts.adapter;
-    this.container = opts.container;
+    this.options = this.normalizeOptions(opts);
+    this.validateBaseOptions();
+
+    this.handle = createCesiumViewer(container, opts.cesium);
+    this.runtime = createCesiumRuntime(this.handle);
     this.emitter = new TypedEmitter<TypedEvents>((_event, error) => {
       this.notifyUncaught(error);
     });
@@ -82,7 +109,7 @@ export class CgxViewer {
 
     this.readyPromise = (async () => {
       try {
-        await this.adapter.initialize?.(this.container);
+        await this.runtime.bootstrap?.(this.options);
 
         if (this.isDisposed || this.isDisposing) {
           throw new CgxError(ErrorCodes.VIEWER_NOT_READY, 'Viewer was disposed before initialization completed');
@@ -134,10 +161,11 @@ export class CgxViewer {
       this.installedCapabilities.clear();
 
       try {
-        await this.adapter.dispose?.();
+        await this.runtime.dispose?.();
+        this.handle.destroy();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        this.reportError('Error disposing L1 adapter', error);
+        this.reportError('Error disposing Cesium runtime', error);
       }
 
       this.isDisposed = true;
@@ -148,9 +176,14 @@ export class CgxViewer {
     return this.disposePromise;
   }
 
-  /** 返回底层引擎对象，若适配器未提供则返回 undefined。 */
+  /** 返回底层 Cesium Viewer 对象。 */
+  getCesiumViewer(): unknown {
+    return this.runtime.unsafeNative?.();
+  }
+
+  /** 返回底层 Cesium Viewer 对象。 */
   unsafeNative(): unknown {
-    return this.adapter.unsafeNative?.();
+    return this.getCesiumViewer();
   }
 
   /** 订阅一个强类型事件。 */
@@ -218,6 +251,66 @@ export class CgxViewer {
     }
   }
 
+  private normalizeOptions(opts: CgxViewerOptions): ViewerOptions {
+    if ('options' in opts && (opts as { options?: unknown }).options !== undefined) {
+      throw new CgxError(
+        ErrorCodes.INVALID_VIEWER_OPTIONS,
+        'CgxViewer no longer accepts nested options. Use top-level scene/terrain/basemaps/layers fields.'
+      );
+    }
+
+    const { scene, terrain, basemaps, layers } = opts;
+    const normalized: ViewerOptions = {};
+    if (scene !== undefined) normalized.scene = scene;
+    if (terrain !== undefined) normalized.terrain = terrain;
+    if (basemaps !== undefined) normalized.basemaps = basemaps;
+    if (layers !== undefined) normalized.layers = layers;
+    return normalized;
+  }
+
+  private validateBaseOptions(): void {
+
+
+    const { scene, basemaps, layers } = this.options;
+    if (scene?.center) {
+      const { lng, lat } = scene.center;
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+        throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, 'scene.center requires finite lng/lat');
+      }
+    }
+    if (scene?.resolutionScale !== undefined && (!Number.isFinite(scene.resolutionScale) || scene.resolutionScale <= 0)) {
+      throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, 'scene.resolutionScale must be a finite number > 0');
+    }
+
+    this.validateLayerSpecs('basemaps', basemaps);
+    this.validateLayerSpecs('layers', layers);
+  }
+
+  private validateLayerSpecs(field: 'basemaps' | 'layers', value: ViewerOptions['basemaps'] | ViewerOptions['layers']): void {
+    if (value === undefined) return;
+    if (!Array.isArray(value)) {
+      throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, `${field} must be an array`);
+    }
+    for (const layer of value) {
+      if (!layer || typeof layer !== 'object' || typeof layer.id !== 'string') {
+        throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, `${field} contains an invalid layer item`);
+      }
+      if (field === 'layers' && typeof (layer as LayerRenderSpec).kind !== 'string') {
+        throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, `${field} contains an invalid layer item`);
+      }
+      if (field === 'basemaps') {
+        const basemap = layer as BasemapSpec;
+        if ('kind' in basemap) {
+          if (basemap.kind !== 'imagery') {
+            throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, 'basemaps only support imagery layers or preset basemaps');
+          }
+        } else if (typeof basemap.provider !== 'string') {
+          throw new CgxError(ErrorCodes.INVALID_VIEWER_OPTIONS, 'basemaps preset items require a string provider');
+        }
+      }
+    }
+  }
+
   private exposeCapability(key: string, instance: unknown): string | undefined {
     if (key in this) return undefined;
 
@@ -253,10 +346,12 @@ export class CgxViewer {
   }
 }
 
+export function getViewerRuntime(viewer: CgxViewer): CesiumRuntime {
+  return (viewer as unknown as { readonly runtime: CesiumRuntime }).runtime;
+}
+
 /**
  * 创建一个新的 CgxViewer 实例。
- * @param opts 包含容器与 L1 层适配器等配置项。
- * @returns 新创建的 CgxViewer 实例。
  */
 export function createViewer(opts: CgxViewerOptions): CgxViewer {
   return new CgxViewer(opts);

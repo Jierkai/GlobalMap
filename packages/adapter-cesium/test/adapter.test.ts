@@ -198,4 +198,121 @@ describe('createCesiumAdapter', () => {
     handle?.dispose();
     await adapter.dispose?.();
   });
+
+  it('applies scene center/resolution/background and bootstraps terrain/basemaps/layers from core DTO', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container', {
+      scene: {
+        center: { lng: 121.5, lat: 31.2, alt: 1000, heading: 90, pitch: -45, roll: 0 },
+        resolutionScale: 1.5,
+        bgType: 'color',
+        bgColor: '#112233',
+      },
+      terrain: {
+        url: 'https://example.com/terrain',
+        requestVertexNormals: true,
+      },
+      basemaps: [
+        {
+          id: 'base-gaode',
+          provider: 'gaode',
+          style: 'vec',
+        },
+        {
+          id: 'base-xyz',
+          kind: 'imagery',
+          provider: { type: 'xyz', url: 'https://a/{z}/{x}/{y}.png' },
+        },
+      ],
+      layers: [
+        {
+          id: 'preload-geo',
+          kind: 'data',
+          sourceType: 'geojson',
+          payload: { type: 'FeatureCollection', features: [] },
+        },
+      ],
+    });
+
+    const viewer = adapter.unsafeNative?.() as any;
+    expect(viewer?.camera.setView).toHaveBeenCalledTimes(1);
+    expect(viewer?.camera.setView).toHaveBeenCalledWith(expect.objectContaining({
+      destination: expect.objectContaining({ x: 121.5, y: 31.2, z: 1000 }),
+      orientation: expect.objectContaining({
+        heading: Math.PI / 2,
+        pitch: -Math.PI / 4,
+        roll: 0,
+      }),
+    }));
+    expect(viewer?.resolutionScale).toBe(1.5);
+    expect((Cesium as any).Color.fromCssColorString).toHaveBeenCalledWith('#112233');
+    expect(viewer?.scene.backgroundColor).toEqual({ __css: '#112233' });
+    expect(viewer?.imageryLayers.addImageryProvider).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('autonavi.com'),
+    }));
+    expect(viewer?.imageryLayers.addImageryProvider).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://a/{z}/{x}/{y}.png',
+    }));
+
+    expect((Cesium as any).CesiumTerrainProvider.fromUrl).toHaveBeenCalledWith(
+      'https://example.com/terrain',
+      { requestVertexNormals: true },
+    );
+    await Promise.resolve();
+    expect((Cesium as any).GeoJsonDataSource.load).toHaveBeenCalledWith(
+      { type: 'FeatureCollection', features: [] },
+      undefined,
+    );
+
+    await adapter.dispose?.();
+  });
+
+  it('mounts bing preset basemaps through the async imagery path', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container', {
+      basemaps: [
+        {
+          id: 'base-bing',
+          provider: 'bing',
+          key: 'bing-key',
+          style: 'AERIAL',
+          culture: 'zh-CN',
+        },
+      ],
+    });
+
+    const viewer = adapter.unsafeNative?.() as any;
+    expect((Cesium as any).BingMapsImageryProvider.fromUrl).toHaveBeenCalledWith(
+      'https://dev.virtualearth.net',
+      expect.objectContaining({
+        key: 'bing-key',
+        mapStyle: 'AERIAL',
+        culture: 'zh-CN',
+      }),
+    );
+    expect((Cesium as any).ImageryLayer.fromProviderAsync).toHaveBeenCalledTimes(1);
+    expect(viewer?.imageryLayers.add).toHaveBeenCalledTimes(1);
+
+    await adapter.dispose?.();
+  });
+
+  it('supports bgType image with skybox sources and defaults bgType to skybox', async () => {
+    const adapter = createCesiumAdapter();
+    const sources = {
+      positiveX: '/px.jpg',
+      negativeX: '/nx.jpg',
+      positiveY: '/py.jpg',
+      negativeY: '/ny.jpg',
+      positiveZ: '/pz.jpg',
+      negativeZ: '/nz.jpg',
+    };
+    await adapter.initialize?.('test-container', {
+      scene: {
+        bgImage: sources,
+      },
+    });
+    const viewer = adapter.unsafeNative?.() as any;
+    expect(viewer?.scene.skyBox).toEqual(expect.objectContaining({ sources }));
+    await adapter.dispose?.();
+  });
 });

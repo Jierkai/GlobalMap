@@ -15,13 +15,14 @@ CGX 是一个 **独立设计和实现** 的 CesiumJS 增强库，采用现代化
 - **净室开发**：所有代码均为原创实现，未参考或复制任何第三方 Cesium 封装库
 - **Apache-2.0 协议**：完全开源，可自由商用
 - **TypeScript 原生**：从零开始设计类型系统，提供完整的类型推断
+- **Cesium-only API**：面向 CesiumJS 二次开发优化，不要求用户理解多引擎适配器模型
 - **模块化架构**：Monorepo 结构，按需引入
 
 ## ✨ 核心特性
 
 ### 🏗️ 架构设计
 
-- **分层架构**：L1（适配层）→ L2（核心层）→ L3（功能层）→ L4（应用层）
+- **Cesium runtime**：公开入口直接创建 Cesium Viewer，内部运行时负责生命周期和渲染桥接
 - **响应式系统**：基于 Signal 的细粒度响应式状态管理
 - **事件系统**：类型安全的事件发射器
 - **状态机**：轻量级有限状态机实现
@@ -30,6 +31,7 @@ CGX 是一个 **独立设计和实现** 的 CesiumJS 增强库，采用现代化
 
 | 包名 | 说明 |
 |------|------|
+| `cgx` | 面向最终用户的 Cesium-only 主入口 |
 | `@cgx/core` | 核心抽象层 - Viewer、Capability、Constraint、FSM |
 | `@cgx/reactive` | 响应式系统 - Signal、ObservableList、ObservableMap |
 | `@cgx/feature` | 要素系统 - GeoJSON 支持、样式规则、LOD |
@@ -39,7 +41,7 @@ CGX 是一个 **独立设计和实现** 的 CesiumJS 增强库，采用现代化
 | `@cgx/analysis` | 空间分析 - 缓冲区、视域、剖面 |
 | `@cgx/material` | 材质系统 - 自定义材质定义 |
 | `@cgx/layer` | 图层系统 - 多源数据加载 |
-| `@cgx/adapter-cesium` | CesiumJS 适配器 |
+| `@cgx/adapter-cesium` | 内部 Cesium runtime |
 | `@cgx/adapter-vue` | Vue 3 适配器 |
 | `@cgx/provider-cn` | 国内地图服务提供商（天地图、高德、百度） |
 
@@ -47,10 +49,10 @@ CGX 是一个 **独立设计和实现** 的 CesiumJS 增强库，采用现代化
 
 ```bash
 # 使用 pnpm
-pnpm add @cgx/core @cgx/adapter-cesium
+pnpm add cgx cesium
 
 # 或 npm
-npm install @cgx/core @cgx/adapter-cesium
+npm install cgx cesium
 ```
 
 ## 🚀 快速开始
@@ -58,12 +60,14 @@ npm install @cgx/core @cgx/adapter-cesium
 ### 创建 Viewer
 
 ```typescript
-import { CgxViewer } from '@cgx/core'
-import { createCesiumAdapter } from '@cgx/adapter-cesium'
+import { CgxViewer } from 'cgx'
 
 const viewer = new CgxViewer({
   container: 'cesiumContainer',
-  adapter: createCesiumAdapter({ shouldAnimate: true })
+  cesium: { shouldAnimate: true },
+  scene: {
+    center: { lng: 116.391, lat: 39.907, alt: 1800000 }
+  }
 })
 
 viewer.on('ready', () => {
@@ -71,6 +75,7 @@ viewer.on('ready', () => {
 })
 
 await viewer.ready()
+const cesiumViewer = viewer.getCesiumViewer()
 ```
 
 ### 响应式状态
@@ -116,6 +121,7 @@ editor.enableEditing(selectedFeature)
 
 ```
 packages/
+├── cgx/            # Cesium-only 用户主入口
 ├── core/           # 核心抽象层
 │   ├── viewer/     # Viewer 创建与管理
 │   ├── capability/  # 能力系统（相机、时钟、输入）
@@ -135,7 +141,7 @@ packages/
 ├── analysis/       # 空间分析
 ├── material/       # 材质系统
 ├── layer/          # 图层系统
-├── adapter-cesium/ # CesiumJS 适配器
+├── adapter-cesium/ # 内部 Cesium runtime
 ├── adapter-vue/    # Vue 3 适配器
 └── provider-cn/    # 国内地图服务
 ```

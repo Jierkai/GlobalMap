@@ -1,34 +1,80 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { CgxError, ErrorCodes } from '../src/errors/CgxError.js';
 import type { Capability } from '../src/capability/Capability.js';
 
-describe('CgxViewer', () => {
-  it('should initialize and reach ready status', async () => {
-    const mockAdapter = {
-      initialize: vi.fn().mockResolvedValue(undefined),
-      dispose: vi.fn().mockResolvedValue(undefined),
-    };
+const mocks = vi.hoisted(() => {
+  const nativeViewer = { scene: {}, camera: {} };
+  const handle = { destroy: vi.fn() };
+  const runtime = {
+    bootstrap: vi.fn().mockResolvedValue(undefined),
+    dispose: vi.fn().mockResolvedValue(undefined),
+    unsafeNative: vi.fn(() => nativeViewer),
+  };
+  return {
+    nativeViewer,
+    handle,
+    runtime,
+    createCesiumViewer: vi.fn(() => handle),
+    createCesiumRuntime: vi.fn(() => runtime),
+  };
+});
 
-    const viewer = new CgxViewer({ container: 'app', adapter: mockAdapter });
+vi.mock('@cgx/adapter-cesium', () => ({
+  createViewer: mocks.createCesiumViewer,
+  createCesiumRuntime: mocks.createCesiumRuntime,
+}));
+
+describe('CgxViewer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should initialize and reach ready status', async () => {
+    const viewer = new CgxViewer({
+      container: 'app',
+      cesium: { shouldAnimate: true },
+      scene: {
+        center: { lng: 120, lat: 30 },
+        resolutionScale: 1.25,
+      },
+      basemaps: [
+        {
+          id: 'base-gaode',
+          provider: 'gaode',
+          style: 'img',
+        },
+      ],
+    });
     expect(viewer.status()).toBe('idle');
+    expect(viewer.options).toEqual({
+      scene: {
+        center: { lng: 120, lat: 30 },
+        resolutionScale: 1.25,
+      },
+      terrain: undefined,
+      basemaps: [
+        {
+          id: 'base-gaode',
+          provider: 'gaode',
+          style: 'img',
+        },
+      ],
+      layers: undefined,
+    });
+    expect(mocks.createCesiumViewer).toHaveBeenCalledWith('app', { shouldAnimate: true });
 
     const onReady = vi.fn();
     viewer.on('ready', onReady);
 
     await viewer.ready();
     expect(viewer.status()).toBe('ready');
-    expect(mockAdapter.initialize).toHaveBeenCalledWith('app');
+    expect(mocks.runtime.bootstrap).toHaveBeenCalledWith(viewer.options);
     expect(onReady).toHaveBeenCalledWith({ viewer });
   });
 
   it('should handle dispose idempotently', async () => {
-    const mockAdapter = {
-      initialize: vi.fn().mockResolvedValue(undefined),
-      dispose: vi.fn().mockResolvedValue(undefined),
-    };
-
-    const viewer = new CgxViewer({ container: 'app', adapter: mockAdapter });
+    const viewer = new CgxViewer({ container: 'app' });
     await viewer.ready();
 
     const onDispose = vi.fn();
@@ -36,15 +82,24 @@ describe('CgxViewer', () => {
 
     await viewer.dispose();
     expect(viewer.status()).toBe('disposed');
-    expect(mockAdapter.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.handle.destroy).toHaveBeenCalledTimes(1);
     expect(onDispose).toHaveBeenCalledWith({ viewer });
 
     await viewer.dispose();
-    expect(mockAdapter.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.handle.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return the native Cesium viewer', () => {
+    const viewer = new CgxViewer({ container: 'app' });
+
+    expect(viewer.getCesiumViewer()).toBe(mocks.nativeViewer);
+    expect(viewer.unsafeNative()).toBe(mocks.nativeViewer);
   });
 
   it('should inject capabilities and reject duplicates', async () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
 
     const mockCap: Capability<{ test: boolean }> = {
       id: 'mockCap',
@@ -65,7 +120,7 @@ describe('CgxViewer', () => {
   });
 
   it('should clean up capabilities on dispose', async () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
     const disposeFn = vi.fn();
     const mockCap: Capability<unknown> = {
       id: 'mockCap',
@@ -79,7 +134,7 @@ describe('CgxViewer', () => {
   });
 
   it('should notify uncaught handlers when event listeners throw', async () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
     const uncaught = vi.fn();
 
     viewer.onUncaught(uncaught);
@@ -93,12 +148,56 @@ describe('CgxViewer', () => {
   });
 
   it('should reject ready after dispose', async () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
 
     await viewer.dispose();
 
     await expect(viewer.ready()).rejects.toMatchObject({
       code: ErrorCodes.VIEWER_NOT_READY,
     });
+  });
+
+  it('should validate malformed base options', () => {
+    expect(() => new CgxViewer({
+      container: '',
+    })).toThrowError(CgxError);
+
+    expect(() => new CgxViewer({
+      container: 'app',
+      scene: {
+        center: { lng: Number.NaN, lat: 30 },
+      },
+    })).toThrowError(CgxError);
+
+    expect(() => new CgxViewer({
+      container: 'app',
+      scene: {
+        resolutionScale: 0,
+      },
+    })).toThrowError(CgxError);
+
+    expect(() => new CgxViewer({
+      container: 'app',
+      basemaps: [
+        {
+          id: 'invalid-basemap',
+          kind: 'data',
+          sourceType: 'geojson',
+        },
+      ] as any,
+    })).toThrowError(CgxError);
+  });
+
+  it('should reject legacy nested options explicitly', () => {
+    expect(() => new CgxViewer({
+      container: 'app',
+      ...( {
+        options: {
+          scene: {
+            center: { lng: 120, lat: 30 },
+          },
+        },
+      } as any),
+    } as any)).toThrowError(CgxError);
   });
 });

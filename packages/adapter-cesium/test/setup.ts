@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 
+export const mockViewerConstructor = vi.fn();
+export const mockBingMapsFromUrl = vi.fn(async (_url, options) => ({ __provider: 'bing', ...options }));
 const mockViewerDestroy = vi.fn();
 const mockHandlerDestroy = vi.fn();
 const primitiveStore = new Set<any>();
@@ -10,6 +12,8 @@ vi.mock('cesium', () => {
   return {
     Viewer: class {
       scene = {
+        backgroundColor: undefined,
+        skyBox: undefined,
         pickPositionSupported: true,
         pickPosition: vi.fn((pos) => ({ x: pos.x, y: pos.y, z: 0 })),
         camera: {
@@ -26,10 +30,13 @@ vi.mock('cesium', () => {
         pick: vi.fn(() => ({ id: 'picked' })),
         drillPick: vi.fn(() => [{ id: 'picked1' }])
       };
-      camera = {};
+      camera = {
+        setView: vi.fn(),
+      };
       clock = {};
       imageryLayers = {
         addImageryProvider: vi.fn((p) => p),
+        add: vi.fn((layer) => layer),
         remove: vi.fn(() => true)
       };
       dataSources = {
@@ -50,7 +57,9 @@ vi.mock('cesium', () => {
       };
       destroy = mockViewerDestroy;
       isDestroyed = vi.fn(() => false);
-      constructor(container: any, options: any) {}
+      constructor(container: any, options: any) {
+        mockViewerConstructor(container, options);
+      }
     },
     ScreenSpaceEventHandler: class {
       setInputAction = vi.fn();
@@ -65,6 +74,11 @@ vi.mock('cesium', () => {
       LEFT_UP: 3,
       RIGHT_CLICK: 4,
       MOUSE_MOVE: 5
+    },
+    SceneMode: {
+      SCENE2D: 2,
+      SCENE3D: 3,
+      COLUMBUS_VIEW: 1
     },
     Cartesian2: class {
       x: number;
@@ -109,9 +123,19 @@ vi.mock('cesium', () => {
     },
     UrlTemplateImageryProvider: class { constructor(options: any) { Object.assign(this, options); } },
     WebMapServiceImageryProvider: class { constructor(options: any) { Object.assign(this, options); } },
+    BingMapsImageryProvider: {
+      fromUrl: mockBingMapsFromUrl,
+    },
+    ImageryLayer: class {
+      static fromProviderAsync = vi.fn((providerPromise: Promise<any>) => ({ __asyncProvider: providerPromise }));
+      constructor(provider: any) {
+        Object.assign(this, { provider });
+      }
+    },
     CesiumTerrainProvider: {
       fromUrl: vi.fn(async (url, options) => ({ url, ...options }))
     },
+    EllipsoidTerrainProvider: class {},
     Cesium3DTileset: {
       fromUrl: vi.fn(async (url, options) => ({ url, ...options, id: 'tileset' }))
     },
@@ -137,5 +161,13 @@ vi.mock('cesium', () => {
       }
     },
     Material: class { constructor(options: any) { Object.assign(this, options); } },
+    Color: {
+      fromCssColorString: vi.fn((value) => ({ __css: value })),
+    },
+    SkyBox: class {
+      constructor(options: any) {
+        Object.assign(this, options);
+      }
+    },
   };
 });

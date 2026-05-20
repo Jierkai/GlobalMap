@@ -1,7 +1,7 @@
 # @cgx/core
 
 ## 功能
-`core` 模块是整个地图库的核心基础设施。它提供了独立于具体渲染引擎的基础类库、状态机、事件中心、错误处理和通用工具方法。所有其他高级功能模块和引擎适配器都依赖于此核心模块定义的接口和规范。
+`core` 模块是 CGX 的内部核心基础设施。它提供 Viewer 生命周期、状态机、事件中心、错误处理和通用工具方法；最终用户优先通过 `cgx` 包创建 Cesium-only `CgxViewer`。
 
 ## 架构
 该模块采用无框架和无引擎依赖的纯 TypeScript 编写。主要包含以下部分：
@@ -13,14 +13,7 @@
 
 ## 示例
 ```typescript
-import { CgxViewer, defineFsm, type EngineAdapter } from '@cgx/core';
-
-// 创建核心的 Viewer 实例（通常由特定引擎如 Cesium 的适配器包装使用）
-const adapter: EngineAdapter = {};
-const viewer = new CgxViewer({
-  container: 'map-container',
-  adapter,
-});
+import { defineFsm } from '@cgx/core';
 
 // 定义状态机
 const fsm = defineFsm({

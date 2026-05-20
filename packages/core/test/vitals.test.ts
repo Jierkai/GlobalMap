@@ -1,6 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { createVitalsHud } from '../src/vitals/VitalsHud.js';
+
+const mocks = vi.hoisted(() => {
+  const handle = { destroy: vi.fn() };
+  const runtime = {
+    bootstrap: vi.fn(),
+    dispose: vi.fn(),
+    unsafeNative: vi.fn(),
+  };
+  return {
+    handle,
+    runtime,
+    createCesiumViewer: vi.fn(() => handle),
+    createCesiumRuntime: vi.fn(() => runtime),
+  };
+});
+
+vi.mock('@cgx/adapter-cesium', () => ({
+  createViewer: mocks.createCesiumViewer,
+  createCesiumRuntime: mocks.createCesiumRuntime,
+}));
 
 describe('VitalsHud', () => {
   beforeEach(() => {
@@ -12,7 +32,7 @@ describe('VitalsHud', () => {
   });
 
   it('should not attach if not dev and not enabled', () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
     // Assuming Vite test runs with import.meta.env.DEV = true by default, 
     // so we disable it explicitly, or we override.
     // By default, let's explicitly disable to see if it attaches.
@@ -24,7 +44,7 @@ describe('VitalsHud', () => {
   });
 
   it('should clean up DOM upon detach', () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
+    const viewer = new CgxViewer({ container: 'app' });
     const hud = createVitalsHud(viewer, { enabled: true });
     
     expect(document.querySelector('.cgx-vitals-hud')).not.toBeNull();

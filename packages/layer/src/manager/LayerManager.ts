@@ -1,6 +1,5 @@
+import { getViewerRuntime, type CgxViewer, type Capability, type EngineAdapter } from '@cgx/core';
 import { signal } from '@cgx/reactive';
-import type { CgxViewer, Capability } from '@cgx/core';
-import type { EngineAdapter } from '@cgx/core';
 import type { Layer } from '../layer/types.js';
 
 /**
@@ -43,7 +42,7 @@ export const Layers: Capability<LayerManagerApi> = {
         if (!current.find(l => l.id === layer.id)) {
            layersSignal([...current, layer]);
            (layer as InternalLayer)._setManager?.(api);
-           (layer as InternalLayer)._mount?.(viewer.adapter);
+           (layer as InternalLayer)._mount?.(getViewerRuntime(viewer));
            (layer as InternalLayer)._emitMounted?.();
         }
       },
@@ -54,7 +53,7 @@ export const Layers: Capability<LayerManagerApi> = {
         if (layer) {
            layersSignal(current.filter(l => l.id !== id));
            (layer as InternalLayer)._setManager?.(null);
-           (layer as InternalLayer)._unmount?.(viewer.adapter);
+           (layer as InternalLayer)._unmount?.(getViewerRuntime(viewer));
            (layer as InternalLayer)._emitRemoved?.();
         }
       },

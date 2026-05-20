@@ -44,12 +44,6 @@ importers:
 
   examples:
     dependencies:
-      '@cgx/adapter-cesium':
-        specifier: workspace:*
-        version: link:../packages/adapter-cesium
-      '@cgx/core':
-        specifier: workspace:*
-        version: link:../packages/core
       cesium:
         specifier: ^1.139.0
         version: 1.139.0
@@ -68,10 +62,6 @@ importers:
         version: 1.2.23(cesium@1.139.0)(rollup@4.59.0)(vite@5.4.21(@types/node@25.6.0))
 
   packages/adapter-cesium:
-    dependencies:
-      '@cgx/core':
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       cesium:
         specifier: ^1.139.0
@@ -110,6 +100,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@cgx/adapter-cesium':
+        specifier: workspace:*
+        version: link:../adapter-cesium
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
@@ -154,6 +147,9 @@ importers:
         specifier: workspace:*
         version: link:../reactive
     devDependencies:
+      cesium:
+        specifier: ^1.139.0
+        version: 1.139.0
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@25.6.0)(@vitest/ui@2.1.9)(happy-dom@20.9.0)(jsdom@29.0.2)

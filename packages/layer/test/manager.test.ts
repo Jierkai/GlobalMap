@@ -1,14 +1,41 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CgxViewer } from '@cgx/core';
+import type { CgxViewer } from '@cgx/core';
 import { Layers } from '../src/manager/LayerManager.js';
 import { ImageryLayer } from '../src/layer/ImageryLayer.js';
 import { createXyzProvider } from '../src/provider/xyz.js';
 import { effect } from '@cgx/reactive';
 
+const mocks = vi.hoisted(() => {
+  const handle = { destroy: vi.fn() };
+  const layerHandle = { dispose: vi.fn(), update: vi.fn() };
+  const runtime = {
+    bootstrap: vi.fn(),
+    dispose: vi.fn(),
+    mountLayer: vi.fn(() => layerHandle),
+    unmountLayer: vi.fn((mounted) => mounted?.dispose()),
+    unsafeNative: vi.fn(),
+  };
+  return {
+    handle,
+    layerHandle,
+    runtime,
+    createCesiumViewer: vi.fn(() => handle),
+    createCesiumRuntime: vi.fn(() => runtime),
+  };
+});
+
+vi.mock('@cgx/adapter-cesium', () => ({
+  createViewer: mocks.createCesiumViewer,
+  createCesiumRuntime: mocks.createCesiumRuntime,
+}));
+
+const mockViewer = {
+  runtime: mocks.runtime,
+} as unknown as CgxViewer;
+
 describe('LayerManager and Layers', () => {
   it('should manage layer addition and removal', async () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
-    const layerManager = viewer.use(Layers);
+    const layerManager = Layers.install(mockViewer);
 
     const provider = createXyzProvider({ url: 'http://test' });
     const layer = new ImageryLayer({ id: 'test-layer', provider });
@@ -25,8 +52,7 @@ describe('LayerManager and Layers', () => {
   });
 
   it('should reorder layers', () => {
-    const viewer = new CgxViewer({ container: 'app', adapter: {} });
-    const layerManager = viewer.use(Layers);
+    const layerManager = Layers.install(mockViewer);
 
     const l1 = new ImageryLayer({ id: 'l1', provider: createXyzProvider({ url: '' }) });
     const l2 = new ImageryLayer({ id: 'l2', provider: createXyzProvider({ url: '' }) });

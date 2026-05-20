@@ -13,6 +13,9 @@
 
 import * as Cesium from 'cesium';
 import type {
+  BasemapSpec,
+  BingBasemapSpec,
+  PresetBasemapSpec,
   DataLayerRenderSpec,
   EngineAdapter,
   FeatureRenderSpec,
@@ -24,7 +27,11 @@ import type {
   ModelFeatureRenderSpec,
   ScreenPoint,
   Updatable,
-} from '@cgx/core';
+  CgxViewerRuntimeOptions as CoreViewerOptions,
+  TerrainOptions as CoreTerrainOptions,
+  SceneOptions as CoreSceneOptions,
+  CesiumRuntime,
+} from './types';
 import { toCartesian3 } from './coord';
 import { EntityBase } from './entity';
 import { LayerBridge } from './layer';
@@ -37,6 +44,174 @@ import { createViewer, _getInternalViewer } from './viewer';
  * 图层句柄类型，扩展了 Updatable 接口并包含原始数据引用
  */
 type LayerHandle = Updatable<LayerRenderSpec> & { raw?: unknown };
+
+type MountedLayerEntry = {
+  spec: LayerRenderSpec;
+  handle: LayerHandle;
+};
+
+function isPresetBasemapSpec(value: BasemapSpec): value is PresetBasemapSpec {
+  return !('kind' in value);
+}
+
+function gaodeStyleToUrl(style: string | undefined): string {
+  const code = style === 'img'
+    ? 6
+    : style === 'road'
+      ? 8
+      : 7;
+  return `https://webrd0{s}.is.autonavi.com/appmaptile?style=${code}&x={x}&y={y}&z={z}`;
+}
+
+function baiduStyleToUrl(style: string | undefined): string {
+  const custom = style === 'dark' ? 'dark' : style === 'custom' ? 'custom' : 'normal';
+  return `https://maponline{s}.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=${custom}`;
+}
+
+function tiandituTypeToLayer(type: string | undefined): string {
+  if (type === 'img') return 'img';
+  if (type === 'ter') return 'ter';
+  return 'vec';
+}
+
+function withImageryLayerBase(spec: PresetBasemapSpec): Omit<Extract<LayerRenderSpec, { kind: 'imagery' }>, 'provider'> {
+  const base: Omit<Extract<LayerRenderSpec, { kind: 'imagery' }>, 'provider'> = {
+    id: spec.id,
+    kind: 'imagery',
+  };
+  if (spec.visible !== undefined) base.visible = spec.visible;
+  if (spec.opacity !== undefined) base.opacity = spec.opacity;
+  if (spec.zIndex !== undefined) base.zIndex = spec.zIndex;
+  return base;
+}
+
+function normalizeBasemapSpec(spec: BasemapSpec): LayerRenderSpec {
+  if (!isPresetBasemapSpec(spec)) return spec;
+
+  const base = withImageryLayerBase(spec);
+
+  if (spec.provider === 'gaode') {
+    return {
+      ...base,
+      provider: {
+        type: 'xyz',
+        url: gaodeStyleToUrl(spec.style),
+        subdomains: ['1', '2', '3', '4'],
+      },
+    };
+  }
+
+  if (spec.provider === 'baidu') {
+    return {
+      ...base,
+      provider: {
+        type: 'xyz',
+        url: baiduStyleToUrl(spec.style),
+        subdomains: ['0', '1', '2', '3'],
+      },
+    };
+  }
+
+  if (spec.provider === 'tianditu') {
+    return {
+      ...base,
+      provider: {
+        type: 'xyz',
+        url: `https://t{s}.tianditu.gov.cn/${tiandituTypeToLayer(spec.type)}_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${tiandituTypeToLayer(spec.type)}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${spec.token}`,
+        subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
+      },
+    };
+  }
+
+  return {
+    ...base,
+    provider: spec,
+  };
+}
+
+function isSkyboxSources(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== 'object') return false;
+  const required = ['positiveX', 'negativeX', 'positiveY', 'negativeY', 'positiveZ', 'negativeZ'] as const;
+  return required.every((key) => typeof (value as Record<string, unknown>)[key] === 'string');
+}
+
+function applySceneOptions(viewer: Cesium.Viewer, scene: CoreSceneOptions | undefined): void {
+  if (!scene) return;
+
+  if (scene.resolutionScale !== undefined) {
+    viewer.resolutionScale = scene.resolutionScale;
+  }
+
+  if (scene.center && typeof viewer.camera.setView === 'function') {
+    const destination = toCartesian3(scene.center) as unknown as Cesium.Cartesian3;
+    const orientation = scene.center.heading !== undefined
+      || scene.center.pitch !== undefined
+      || scene.center.roll !== undefined
+      ? {
+        heading: Cesium.Math.toRadians(scene.center.heading ?? 0),
+        pitch: Cesium.Math.toRadians(scene.center.pitch ?? -90),
+        roll: Cesium.Math.toRadians(scene.center.roll ?? 0),
+      }
+      : undefined;
+    if (orientation) {
+      viewer.camera.setView({
+        destination,
+        orientation,
+      });
+    } else {
+      viewer.camera.setView({ destination });
+    }
+  }
+
+  const bgType = scene.bgType ?? 'skybox';
+  if (bgType === 'color' && scene.bgColor) {
+    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString(scene.bgColor);
+    viewer.scene.skyBox = undefined;
+    return;
+  }
+
+  if (bgType === 'image' && scene.bgImage) {
+    if (typeof scene.bgImage === 'string') {
+      viewer.scene.skyBox = new Cesium.SkyBox({
+        sources: {
+          positiveX: scene.bgImage,
+          negativeX: scene.bgImage,
+          positiveY: scene.bgImage,
+          negativeY: scene.bgImage,
+          positiveZ: scene.bgImage,
+          negativeZ: scene.bgImage,
+        },
+      });
+      return;
+    }
+    if (isSkyboxSources(scene.bgImage)) {
+      viewer.scene.skyBox = new Cesium.SkyBox({
+        sources: scene.bgImage,
+      });
+      return;
+    }
+  }
+
+  if (scene.bgImage && isSkyboxSources(scene.bgImage)) {
+    viewer.scene.skyBox = new Cesium.SkyBox({
+      sources: scene.bgImage,
+    });
+  }
+}
+
+function resolveTerrainProvider(terrain: CoreTerrainOptions | undefined): unknown {
+  if (!terrain) return undefined;
+  if (terrain.provider !== undefined) return resolveProvider(terrain.provider);
+  if (terrain.url) {
+    const options: Record<string, unknown> = {
+      ...(terrain.options ?? {}),
+    };
+    if (terrain.requestVertexNormals !== undefined) options.requestVertexNormals = terrain.requestVertexNormals;
+    if (terrain.requestWaterMask !== undefined) options.requestWaterMask = terrain.requestWaterMask;
+    return Cesium.CesiumTerrainProvider.fromUrl(terrain.url, options);
+  }
+  return undefined;
+}
 
 /**
  * 类型守卫：判断值是否为经纬度坐标对象
@@ -498,6 +673,56 @@ class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
 function resolveProvider(provider: unknown): unknown {
   if (provider && typeof provider === 'object' && 'raw' in provider && typeof provider.raw === 'function') {
     return provider.raw();
+  }
+
+  if (provider && typeof provider === 'object' && 'toRenderSpec' in provider && typeof provider.toRenderSpec === 'function') {
+    return resolveProvider(provider.toRenderSpec());
+  }
+
+  if (provider && typeof provider === 'object' && 'provider' in provider) {
+    const spec = provider as Record<string, unknown>;
+    if (spec.provider === 'bing') {
+      const bing = spec as unknown as BingBasemapSpec;
+      if (typeof bing.key !== 'string' || bing.key.length === 0) {
+        throw new Error('bing basemap requires a non-empty key');
+      }
+      const options: Record<string, unknown> = {
+        key: bing.key,
+      };
+      if (bing.style !== undefined) options.mapStyle = bing.style;
+      if (bing.culture !== undefined) options.culture = bing.culture;
+      if (bing.mapLayer !== undefined) options.mapLayer = bing.mapLayer;
+      return Cesium.BingMapsImageryProvider.fromUrl('https://dev.virtualearth.net', options as any);
+    }
+  }
+
+  if (provider && typeof provider === 'object' && 'type' in provider) {
+    const spec = provider as Record<string, unknown>;
+    if (spec.type === 'xyz' && typeof spec.url === 'string') {
+      const imageryOptions: {
+        url: string;
+        minimumLevel?: number;
+        maximumLevel?: number;
+        subdomains?: string[];
+      } = {
+        url: spec.url,
+      };
+      if (typeof spec.minimumLevel === 'number') imageryOptions.minimumLevel = spec.minimumLevel;
+      if (typeof spec.maximumLevel === 'number') imageryOptions.maximumLevel = spec.maximumLevel;
+      if (Array.isArray(spec.subdomains)) {
+        imageryOptions.subdomains = spec.subdomains.filter((value): value is string => typeof value === 'string');
+      }
+      return new Cesium.UrlTemplateImageryProvider({
+        ...imageryOptions,
+      });
+    }
+    if (spec.type === 'wms' && typeof spec.url === 'string' && typeof spec.layers === 'string') {
+      return new Cesium.WebMapServiceImageryProvider({
+        url: spec.url,
+        layers: spec.layers,
+        parameters: spec.parameters as Record<string, unknown> | undefined,
+      });
+    }
   }
 
   return provider;
@@ -972,7 +1197,7 @@ export interface CesiumEngineAdapterOptions extends ViewerOptions {
  *
  * @example
  * ```typescript
- * const adapter = createCesiumAdapter({ shouldAnimate: true });
+ * const adapter = createCesiumAdapter({ animation: true, shouldAnimate: true });
  * adapter.initialize('cesiumContainer');
  *
  * // 挂载图层
@@ -995,8 +1220,13 @@ export interface CesiumEngineAdapterOptions extends ViewerOptions {
  * ```
  */
 export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): EngineAdapter {
+  const { viewer: providedViewer, ...viewerCtorOptions } = options;
   /** Viewer 句柄引用，可在初始化时传入或延迟创建 */
-  let handle: CesiumViewerHandle | undefined = options.viewer;
+  let handle: CesiumViewerHandle | undefined = providedViewer;
+  let ownsHandle = false;
+  let mountedTerrain: LayerHandle | undefined;
+  let mountedBasemaps: MountedLayerEntry[] = [];
+  let mountedLayers: MountedLayerEntry[] = [];
 
   /**
    * 确保 Viewer 句柄已初始化
@@ -1157,6 +1387,93 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
     };
   };
 
+  const mountLayerSpec = (spec: LayerRenderSpec): LayerHandle | void => {
+    const viewerHandle = ensureHandle();
+
+    // 挂载影像图层
+    if (spec.kind === 'imagery') {
+      const layer = LayerBridge.addImageryLayer(viewerHandle, resolveProvider(spec.provider) as Cesium.ImageryProvider);
+      applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, spec);
+      return {
+        update(next: LayerRenderSpec) {
+          applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, next);
+        },
+        dispose() {
+          if (layer) LayerBridge.removeImageryLayer(viewerHandle, layer);
+        },
+      };
+    }
+
+    // 挂载地形图层
+    if (spec.kind === 'terrain') {
+      LayerBridge.setTerrainProvider(viewerHandle, resolveProvider(spec.provider) as Cesium.TerrainProvider);
+      return {
+        update() {},
+        dispose() {
+          LayerBridge.removeTerrainProvider(viewerHandle);
+        },
+      };
+    }
+
+    // 挂载数据图层
+    if (spec.kind === 'data') {
+      return mountDataLayer(spec);
+    }
+
+    // 挂载图形图层
+    if (spec.kind === 'graphic') {
+      return new GraphicLayerMount(viewerHandle, spec, mountFeatureSpec);
+    }
+  };
+
+  const disposeMountedEntries = (entries: MountedLayerEntry[]): void => {
+    for (const entry of entries) {
+      entry.handle.dispose();
+    }
+    entries.length = 0;
+  };
+
+  const mountInitialCollection = (layers: LayerRenderSpec[] | undefined): MountedLayerEntry[] => {
+    if (!layers || layers.length === 0) return [];
+    const entries: MountedLayerEntry[] = [];
+    for (const layer of layers) {
+      const mounted = mountLayerSpec(layer);
+      if (mounted) {
+        entries.push({ spec: layer, handle: mounted });
+      }
+    }
+    return entries;
+  };
+
+  const bootstrapFromCoreOptions = async (coreOptions: CoreViewerOptions | undefined): Promise<void> => {
+    if (!coreOptions) return;
+    const viewer = _getInternalViewer(ensureHandle());
+    if (!viewer) return;
+
+    applySceneOptions(viewer, coreOptions.scene);
+
+    if (mountedTerrain) {
+      mountedTerrain.dispose();
+      mountedTerrain = undefined;
+    }
+    disposeMountedEntries(mountedBasemaps);
+    disposeMountedEntries(mountedLayers);
+
+    const terrainProvider = resolveTerrainProvider(coreOptions.terrain);
+    if (terrainProvider !== undefined) {
+      const provider = await Promise.resolve(terrainProvider);
+      const terrainHandle = mountLayerSpec({
+        id: '__cgx_bootstrap_terrain__',
+        kind: 'terrain',
+        provider,
+      });
+      if (terrainHandle) mountedTerrain = terrainHandle;
+    }
+
+    mountedBasemaps = mountInitialCollection(coreOptions.basemaps?.map(normalizeBasemapSpec));
+    mountedLayers = mountInitialCollection(coreOptions.layers);
+  };
+
   return {
     /** 适配器类型标识 */
     kind: 'cesium',
@@ -1165,15 +1482,26 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
      *
      * @param container - Viewer 容器元素或元素 ID
      */
-    initialize(container: string | HTMLElement) {
-      if (!handle) handle = createViewer(container, options);
+    async initialize(container: string | HTMLElement, coreOptions?: CoreViewerOptions) {
+      if (!handle) {
+        handle = createViewer(container, viewerCtorOptions);
+        ownsHandle = true;
+      }
+      await bootstrapFromCoreOptions(coreOptions);
     },
     /**
      * 销毁适配器，释放 Viewer 资源
      */
     dispose() {
-      handle?.destroy();
+      if (mountedTerrain) {
+        mountedTerrain.dispose();
+        mountedTerrain = undefined;
+      }
+      disposeMountedEntries(mountedBasemaps);
+      disposeMountedEntries(mountedLayers);
+      if (ownsHandle) handle?.destroy();
       handle = undefined;
+      ownsHandle = false;
     },
     /**
      * 挂载图层到场景
@@ -1189,42 +1517,7 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
      * @returns {Updatable<LayerRenderSpec> | void} 图层句柄
      */
     mountLayer(spec: LayerRenderSpec): Updatable<LayerRenderSpec> | void {
-      const viewerHandle = ensureHandle();
-
-      // 挂载影像图层
-      if (spec.kind === 'imagery') {
-        const layer = LayerBridge.addImageryLayer(viewerHandle, resolveProvider(spec.provider) as Cesium.ImageryProvider);
-        applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, spec);
-        return {
-          update(next: LayerRenderSpec) {
-            applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, next);
-          },
-          dispose() {
-            if (layer) LayerBridge.removeImageryLayer(viewerHandle, layer);
-          },
-        };
-      }
-
-      // 挂载地形图层
-      if (spec.kind === 'terrain') {
-        LayerBridge.setTerrainProvider(viewerHandle, resolveProvider(spec.provider) as Cesium.TerrainProvider);
-        return {
-          update() {},
-          dispose() {
-            LayerBridge.removeTerrainProvider(viewerHandle);
-          },
-        };
-      }
-
-      // 挂载数据图层
-      if (spec.kind === 'data') {
-        return mountDataLayer(spec);
-      }
-
-      // 挂载图形图层
-      if (spec.kind === 'graphic') {
-        return new GraphicLayerMount(viewerHandle, spec, mountFeatureSpec);
-      }
+      return mountLayerSpec(spec);
     },
     /**
      * 卸载图层
@@ -1276,6 +1569,49 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
      */
     unsafeNative() {
       return _getInternalViewer(ensureHandle());
+    },
+  };
+}
+
+export function createCesiumRuntime(handle: CesiumViewerHandle): CesiumRuntime {
+  const runtime = createCesiumAdapter({ viewer: handle });
+  return {
+    kind: 'cesium',
+    bootstrap(options?: CoreViewerOptions) {
+      return runtime.initialize?.('', options);
+    },
+    dispose() {
+      return runtime.dispose?.();
+    },
+    mountLayer(spec: LayerRenderSpec) {
+      return runtime.mountLayer?.(spec);
+    },
+    unmountLayer(handleToUnmount: Updatable<LayerRenderSpec> | void) {
+      return runtime.unmountLayer?.(handleToUnmount);
+    },
+    mountFeature(spec: FeatureRenderSpec) {
+      return runtime.mountFeature?.(spec);
+    },
+    unmountFeature(handleToUnmount: Updatable<FeatureRenderSpec> | void) {
+      return runtime.unmountFeature?.(handleToUnmount);
+    },
+    mountWeatherEffect(spec) {
+      return runtime.mountWeatherEffect?.(spec);
+    },
+    unmountWeatherEffect(handleToUnmount) {
+      return runtime.unmountWeatherEffect?.(handleToUnmount);
+    },
+    pick(point: ScreenPoint) {
+      return runtime.pick?.(point);
+    },
+    project(position: LngLat) {
+      return runtime.project?.(position) ?? { x: 0, y: 0 };
+    },
+    unproject(point) {
+      return runtime.unproject?.(point) ?? { lng: 0, lat: 0 };
+    },
+    unsafeNative() {
+      return runtime.unsafeNative?.();
     },
   };
 }

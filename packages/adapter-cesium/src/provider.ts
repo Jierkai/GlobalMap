@@ -50,7 +50,7 @@ export interface WMSImageryOptions {
  * @description
  * 用于创建 Cesium 地形提供者，支持高程数据加载。
  */
-export interface TerrainOptions {
+export interface CesiumTerrainProviderOptions {
   /** 地形服务 URL（如 Cesium Ion 资源地址） */
   url: string;
   /** 是否请求顶点法线，用于光照计算，默认 false */
@@ -132,7 +132,7 @@ export function createWMSImageryProvider(options: WMSImageryOptions): Cesium.Web
  * });
  * ```
  */
-export async function createTerrainProvider(options: TerrainOptions): Promise<Cesium.CesiumTerrainProvider> {
+export async function createTerrainProvider(options: CesiumTerrainProviderOptions): Promise<Cesium.CesiumTerrainProvider> {
   const requestVertexNormals = options.requestVertexNormals ?? false;
   const requestWaterMask = options.requestWaterMask ?? false;
 

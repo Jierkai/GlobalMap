@@ -1,4 +1,19 @@
-export { CgxViewer, createViewer, type CgxViewerOptions, type ViewerStatus, type TypedEvents } from './viewer/CgxViewer.js';
+export { CgxViewer, createViewer, getViewerRuntime, type CgxViewerOptions, type ViewerStatus, type TypedEvents } from './viewer/CgxViewer.js';
+export {
+  type BasemapSpecBase,
+  type GaodeBasemapSpec,
+  type BaiduBasemapSpec,
+  type TiandituBasemapSpec,
+  type BingBasemapSpec,
+  type PresetBasemapSpec,
+  type BasemapSpec,
+  type SceneCenter,
+  type SkyboxSources,
+  type SceneBgType,
+  type SceneOptions,
+  type TerrainOptions,
+  type ViewerOptions,
+} from './types.js';
 export { type Capability, CameraOps, ClockOps, InputOps } from './capability/Capability.js';
 export { createVitalsHud, type VitalsHud, type VitalsConfig } from './vitals/VitalsHud.js';
 export { CgxError, ErrorCodes } from './errors/CgxError.js';

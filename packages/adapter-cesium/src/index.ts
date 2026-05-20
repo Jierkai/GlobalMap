@@ -17,7 +17,10 @@
  * import { createViewer, toCartesian3, ScreenSpaceEmitter } from '@cgx/adapter-cesium';
  * 
  * // 创建 Viewer
- * const viewer = createViewer('cesiumContainer', { shouldAnimate: true });
+ * const viewer = createViewer('cesiumContainer', {
+ *   animation: true,
+ *   shouldAnimate: true
+ * });
  * 
  * // 坐标转换
  * const cartesian3 = toCartesian3({ lng: 116.3974, lat: 39.9093, alt: 100 });
@@ -34,7 +37,7 @@
 export { createViewer } from './viewer';
 
 // 导出 EngineAdapter 工厂
-export { createCesiumAdapter, type CesiumEngineAdapterOptions } from './adapter';
+export { createCesiumAdapter, createCesiumRuntime, type CesiumEngineAdapterOptions } from './adapter';
 
 // 导出逃生舱口函数（谨慎使用）
 export { unsafeGetCesium, unsafeGetNativeViewer } from './escape-hatch';

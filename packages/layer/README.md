@@ -19,14 +19,10 @@
 ## 使用示例
 
 ```typescript
-import { CgxViewer } from '@cgx/core';
-import { createCesiumAdapter } from '@cgx/adapter-cesium';
-import { ImageryLayer, Layers } from '@cgx/layer';
-import { createXyzProvider } from '@cgx/layer/provider/xyz';
+import { CgxViewer, ImageryLayer, Layers, createXyzProvider } from 'cgx';
 
 const viewer = new CgxViewer({
   container: 'map',
-  adapter: createCesiumAdapter(),
 });
 const layers = viewer.use(Layers);
 
