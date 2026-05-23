@@ -988,7 +988,7 @@ export class PrimitiveFeatureBatch {
  * - 同步要素的增删改操作
  * - 管理 Entity 和 Primitive 批量管理器的生命周期
  */
-class GraphicLayerMount implements Updatable<LayerRenderSpec> {
+export class GraphicLayerMount implements Updatable<LayerRenderSpec> {
   /** Entity 模式渲染的要素句柄映射 */
   private readonly entityHandles = new Map<string, Updatable<FeatureRenderSpec>>();
   /** Primitive 模式渲染的批量管理器 */

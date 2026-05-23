@@ -5,10 +5,14 @@ import type {
   TerrainLayerRenderSpec,
   LayerRenderSpec,
   DataLayerRenderSpec,
+  FeatureRenderSpec,
+  GraphicLayerRenderSpec,
+  Updatable,
 } from '@cgx/core';
 import type { CesiumViewerHandle } from '../types';
 import { LayerBridge } from '../layer';
 import { resolveProvider } from './_provider';
+import { GraphicLayerMount } from '../adapter';
 
 export function createImageryLayerHandle(
   viewer: CesiumViewerHandle,
@@ -168,6 +172,39 @@ export function createDataSourceLayerHandle(
         LayerBridge.removeDataSource(viewer, raw);
         raw = undefined;
       }
+    },
+  };
+}
+
+export function createGraphicLayerHandle(
+  viewer: CesiumViewerHandle,
+  spec: GraphicLayerRenderSpec,
+  mountFeature: (spec: FeatureRenderSpec) => Updatable<FeatureRenderSpec>,
+): LayerHandle {
+  const mount = new GraphicLayerMount(viewer, spec, mountFeature);
+  let current: GraphicLayerRenderSpec = spec;
+
+  return {
+    id: spec.id,
+    update(patch: Partial<LayerRenderSpec>) {
+      current = { ...current, ...patch } as GraphicLayerRenderSpec;
+      mount.update(current);
+    },
+    setVisible(v) {
+      current = { ...current, visible: v };
+      mount.update(current);
+    },
+    setOpacity(o) {
+      current = { ...current, opacity: o };
+      mount.update(current);
+    },
+    setZIndex(z) {
+      current = { ...current, zIndex: z };
+      mount.update(current);
+    },
+    unsafeNative: () => mount.raw(),
+    dispose() {
+      mount.dispose();
     },
   };
 }

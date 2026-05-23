@@ -8,6 +8,7 @@ import {
   createTilesetLayerHandle,
   createDataSourceLayerHandle,
 } from '../../src/handles/layer';
+import { createGraphicLayerHandle } from '../../src/handles/layer';
 
 const fakeViewerHandle = { destroy: vi.fn() } as any;
 
@@ -62,6 +63,33 @@ describe('tileset / dataSource LayerHandle factories', () => {
     const h = createTilesetLayerHandle(fakeViewerHandle, {
       id: 't2', kind: 'data', sourceType: 'tileset', payload: { url: 'x' },
     });
+    h.dispose();
+    expect(() => h.dispose()).not.toThrow();
+  });
+});
+
+describe('graphic LayerHandle factory', () => {
+  it('returns a Handle with full LayerHandle surface', () => {
+    const mountFeature = vi.fn(() => ({ update: vi.fn(), dispose: vi.fn() }));
+    const h = createGraphicLayerHandle(
+      fakeViewerHandle,
+      { id: 'g1', kind: 'graphic', graphics: [], renderMode: 'entity' },
+      mountFeature,
+    );
+    expect(h.id).toBe('g1');
+    expect(typeof h.dispose).toBe('function');
+    expect(typeof h.update).toBe('function');
+    expect(typeof h.setVisible).toBe('function');
+    expect(typeof h.unsafeNative).toBe('function');
+  });
+
+  it('graphic handle dispose is idempotent', () => {
+    const mountFeature = vi.fn(() => ({ update: vi.fn(), dispose: vi.fn() }));
+    const h = createGraphicLayerHandle(
+      fakeViewerHandle,
+      { id: 'g2', kind: 'graphic', graphics: [], renderMode: 'entity' },
+      mountFeature,
+    );
     h.dispose();
     expect(() => h.dispose()).not.toThrow();
   });
