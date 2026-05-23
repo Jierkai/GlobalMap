@@ -243,7 +243,7 @@ function isLngLat(value: unknown): value is { lng: number; lat: number; alt?: nu
  * @param value - 待转换的位置值
  * @returns {unknown} Cesium 笛卡尔3坐标或原始值
  */
-function toCesiumPosition(value: unknown): unknown {
+export function toCesiumPosition(value: unknown): unknown {
   if (Array.isArray(value)) {
     const [lng, lat, alt] = value;
     if (typeof lng === 'number' && typeof lat === 'number') {
@@ -264,7 +264,7 @@ function toCesiumPosition(value: unknown): unknown {
  * @param values - 位置值数组，可以为 undefined
  * @returns {unknown[] | undefined} 转换后的坐标数组，输入为 undefined 时返回 undefined
  */
-function toCesiumPositions(values: unknown[] | undefined): unknown[] | undefined {
+export function toCesiumPositions(values: unknown[] | undefined): unknown[] | undefined {
   return values?.map((value) => toCesiumPosition(value));
 }
 
@@ -355,7 +355,7 @@ function midpointPosition(values: unknown[]): unknown | undefined {
  * @param spec - 要素渲染规格
  * @returns {unknown[]} 位置数组，不支持的要素类型返回空数组
  */
-function positionsFromSpec(spec: FeatureRenderSpec): unknown[] {
+export function positionsFromSpec(spec: FeatureRenderSpec): unknown[] {
   if (spec.kind === 'polyline') {
     return spec.positions ?? (spec.polyline?.positions as unknown[] | undefined) ?? [];
   }
@@ -378,7 +378,7 @@ function positionsFromSpec(spec: FeatureRenderSpec): unknown[] {
  * @param spec - 要素渲染规格
  * @returns {unknown | undefined} 标签位置，无法确定时返回 undefined
  */
-function resolveLabelPosition(spec: FeatureRenderSpec): unknown | undefined {
+export function resolveLabelPosition(spec: FeatureRenderSpec): unknown | undefined {
   if (spec.label?.position !== undefined) return spec.label.position;
   if (spec.kind === 'text' || spec.kind === 'label') return spec.position;
   if ('position' in spec && spec.position !== undefined) return spec.position;
@@ -437,7 +437,7 @@ function toCesiumCartesian3(value: unknown): unknown {
  * @param label - 标签渲染规格
  * @returns {Record<string, unknown> | undefined} Cesium 标签配置对象，输入为 undefined 时返回 undefined
  */
-function toCesiumLabel(label: LabelRenderSpec | undefined): Record<string, unknown> | undefined {
+export function toCesiumLabel(label: LabelRenderSpec | undefined): Record<string, unknown> | undefined {
   if (!label) return undefined;
   const { position: _position, ...rest } = label;
   if (rest.pixelOffset !== undefined) {
@@ -461,7 +461,7 @@ function toCesiumLabel(label: LabelRenderSpec | undefined): Record<string, unkno
  * @param layerMode - 图层默认渲染模式，默认为 'entity'
  * @returns {GraphicRenderMode} 解析后的渲染模式
  */
-function resolveFeatureMode(spec: FeatureRenderSpec, layerMode: GraphicRenderMode = 'entity'): GraphicRenderMode {
+export function resolveFeatureMode(spec: FeatureRenderSpec, layerMode: GraphicRenderMode = 'entity'): GraphicRenderMode {
   const mode = spec.kind === 'model'
     ? spec.model?.renderMode ?? spec.renderMode ?? layerMode
     : spec.renderMode ?? layerMode;
@@ -475,7 +475,7 @@ function resolveFeatureMode(spec: FeatureRenderSpec, layerMode: GraphicRenderMod
  * @param target - Cesium 对象（Entity、Primitive 等）
  * @param spec - 包含 visible 和 opacity 的配置对象
  */
-function applyCommonVisibility(target: Record<string, unknown> | null | undefined, spec: { visible?: boolean; opacity?: number }): void {
+export function applyCommonVisibility(target: Record<string, unknown> | null | undefined, spec: { visible?: boolean; opacity?: number }): void {
   if (!target) return;
   if (spec.visible !== undefined) target.show = spec.visible;
   if (spec.opacity !== undefined) target.opacity = spec.opacity;
@@ -491,7 +491,7 @@ function applyCommonVisibility(target: Record<string, unknown> | null | undefine
  * @param spec - 要素渲染规格
  * @returns {Cesium.Entity.ConstructorOptions} Cesium Entity 构造选项
  */
-function buildEntityOptions(spec: FeatureRenderSpec): Cesium.Entity.ConstructorOptions {
+export function buildEntityOptions(spec: FeatureRenderSpec): Cesium.Entity.ConstructorOptions {
   const options: Cesium.Entity.ConstructorOptions = {
     id: spec.id,
   };
@@ -676,14 +676,14 @@ export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
  * @param payload - 原始 payload 数据
  * @returns {Record<string, unknown>} 转换后的 Record 对象，非对象类型返回空对象
  */
-function payloadRecord(payload: unknown): Record<string, unknown> {
+export function payloadRecord(payload: unknown): Record<string, unknown> {
   return payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
 }
 
 /**
  * 原语批量渲染的要素类型
  */
-type PrimitiveBatchKind = 'point' | 'billboard' | 'label' | 'polyline' | 'polygon';
+export type PrimitiveBatchKind = 'point' | 'billboard' | 'label' | 'polyline' | 'polygon';
 
 /**
  * 原语批量集合接口
@@ -691,7 +691,7 @@ type PrimitiveBatchKind = 'point' | 'billboard' | 'label' | 'polyline' | 'polygo
  * @description
  * 描述一个原语批量集合的状态，包含类型、原语实例和已添加的项目 ID 列表。
  */
-interface PrimitiveBatchCollection {
+export interface PrimitiveBatchCollection {
   /** 集合类型 */
   kind: PrimitiveBatchKind;
   /** Cesium 原语集合实例 */
@@ -706,7 +706,7 @@ interface PrimitiveBatchCollection {
  * @param kind - 原语批量类型
  * @returns {string} Cesium 集合构造函数名称
  */
-function collectionCtorName(kind: PrimitiveBatchKind): string {
+export function collectionCtorName(kind: PrimitiveBatchKind): string {
   if (kind === 'point') return 'PointPrimitiveCollection';
   if (kind === 'billboard') return 'BillboardCollection';
   if (kind === 'label') return 'LabelCollection';
@@ -726,7 +726,7 @@ function collectionCtorName(kind: PrimitiveBatchKind): string {
  * @param id - 集合的唯一标识
  * @returns {any} Cesium 集合实例
  */
-function createPrimitiveCollection(kind: PrimitiveBatchKind, id: string): any {
+export function createPrimitiveCollection(kind: PrimitiveBatchKind, id: string): any {
   const ctorName = collectionCtorName(kind);
   const Ctor = Object.prototype.hasOwnProperty.call(Cesium, ctorName)
     ? (Cesium as any)[ctorName]
