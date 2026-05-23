@@ -31,3 +31,4 @@ legacy/
 .pnpm-store/
 plans/
 !scripts/*.sh
+.superpowers/

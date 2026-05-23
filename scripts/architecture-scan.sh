@@ -23,7 +23,7 @@ if command -v rg >/dev/null 2>&1; then
   }
 
   check_absent "public packages import cesium" "from ['\"]cesium['\"]|import \\* as Cesium|import type \\* as Cesium" packages --glob '!packages/adapter-cesium/**' --glob '!**/dist/**' --glob '!**/coverage/**'
-  check_absent "public packages import @cgx/adapter-cesium" "@cgx/adapter-cesium" packages --glob '!packages/adapter-cesium/**' --glob '!packages/core/src/viewer/CgxViewer.ts' --glob '!**/dist/**' --glob '!**/coverage/**'
+  check_absent "public packages import @cgx/adapter-cesium" "@cgx/adapter-cesium" packages --glob '!packages/adapter-cesium/**' --glob '!**/dist/**' --glob '!**/coverage/**'
   check_absent "packages outside @cgx/reactive import alien-signals" "alien-signals" packages --glob '!packages/reactive/**' --glob '!**/dist/**' --glob '!**/coverage/**'
   check_absent "packages use @ts-nocheck" "@ts-nocheck" packages --glob '!**/dist/**' --glob '!**/coverage/**'
 else
@@ -31,9 +31,8 @@ else
 fi
 
 # ── 2. Stage-1 acceptance gate（grep 实现，不依赖 rg）─────────────
-echo "→ stage-1: ensure packages/core/src has no '@cgx/adapter-cesium' imports except CgxViewer"
-hits=$(grep -rn "@cgx/adapter-cesium" packages/core/src 2>/dev/null \
-  | grep -v "packages/core/src/viewer/CgxViewer.ts" || true)
+echo "→ stage-1: ensure packages/core/src has no '@cgx/adapter-cesium' imports"
+hits=$(grep -rn "@cgx/adapter-cesium" packages/core/src 2>/dev/null || true)
 if [ -n "$hits" ]; then
   echo "✗ unexpected adapter import inside core:"
   echo "$hits"
