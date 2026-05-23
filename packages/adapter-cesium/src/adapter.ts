@@ -37,7 +37,7 @@ import { EntityBase } from './entity';
 import { LayerBridge } from './layer';
 import { PickingBridge } from './picking';
 import { PrimitiveBase } from './primitive';
-import type { CesiumViewerHandle, ViewerOptions } from './types';
+import type { CesiumViewerHandle, CesiumViewerOptions } from './types';
 import { createViewer, _getInternalViewer } from './viewer';
 
 /**
@@ -1179,7 +1179,7 @@ class GraphicLayerMount implements Updatable<LayerRenderSpec> {
  * @description
  * 扩展自 ViewerOptions，可选择传入已创建的 Viewer 句柄。
  */
-export interface CesiumEngineAdapterOptions extends ViewerOptions {
+export interface CesiumEngineAdapterOptions extends CesiumViewerOptions {
   /** 已创建的 Cesium Viewer 句柄，不传则在 initialize 时创建 */
   viewer?: CesiumViewerHandle;
 }
@@ -1219,7 +1219,7 @@ export interface CesiumEngineAdapterOptions extends ViewerOptions {
  * adapter.dispose();
  * ```
  */
-export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): EngineAdapter {
+export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): CesiumRuntime {
   const { viewer: providedViewer, ...viewerCtorOptions } = options;
   /** Viewer 句柄引用，可在初始化时传入或延迟创建 */
   let handle: CesiumViewerHandle | undefined = providedViewer;
@@ -1475,13 +1475,7 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
   };
 
   return {
-    /** 适配器类型标识 */
     kind: 'cesium',
-    /**
-     * 初始化适配器，创建 Cesium Viewer 实例
-     *
-     * @param container - Viewer 容器元素或元素 ID
-     */
     async initialize(container: string | HTMLElement, coreOptions?: CoreViewerOptions) {
       if (!handle) {
         handle = createViewer(container, viewerCtorOptions);
@@ -1489,10 +1483,14 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
       }
       await bootstrapFromCoreOptions(coreOptions);
     },
-    /**
-     * 销毁适配器，释放 Viewer 资源
-     */
-    dispose() {
+    async bootstrap(opts: CoreViewerOptions) {
+      if (!handle) {
+        handle = createViewer('', viewerCtorOptions);
+        ownsHandle = true;
+      }
+      await bootstrapFromCoreOptions(opts);
+    },
+    async dispose() {
       if (mountedTerrain) {
         mountedTerrain.dispose();
         mountedTerrain = undefined;
@@ -1503,112 +1501,75 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): E
       handle = undefined;
       ownsHandle = false;
     },
-    /**
-     * 挂载图层到场景
-     *
-     * @description
-     * 根据图层类型分发到不同的挂载逻辑：
-     * - imagery: 影像图层
-     * - terrain: 地形图层
-     * - data: 数据图层（GeoJSON、Tileset 等）
-     * - graphic: 图形图层（包含多个要素）
-     *
-     * @param spec - 图层渲染规格
-     * @returns {Updatable<LayerRenderSpec> | void} 图层句柄
-     */
-    mountLayer(spec: LayerRenderSpec): Updatable<LayerRenderSpec> | void {
-      return mountLayerSpec(spec);
+    mountLayer(spec: LayerRenderSpec) {
+      return mountLayerSpec(spec) as any;
     },
-    /**
-     * 卸载图层
-     *
-     * @param handleToUnmount - 要卸载的图层句柄
-     */
-    unmountLayer(handleToUnmount: Updatable<LayerRenderSpec> | void) {
+    unmountLayer(handleToUnmount) {
       handleToUnmount?.dispose();
     },
-    /**
-     * 挂载单个要素到场景
-     *
-     * @param spec - 要素渲染规格
-     * @returns {Updatable<FeatureRenderSpec> | void} 要素句柄
-     */
-    mountFeature(spec: FeatureRenderSpec): Updatable<FeatureRenderSpec> | void {
-      return mountFeatureSpec(spec);
+    mountFeature(spec: FeatureRenderSpec) {
+      return mountFeatureSpec(spec) as any;
     },
-    /**
-     * 卸载要素
-     *
-     * @param handleToUnmount - 要卸载的要素句柄
-     */
-    unmountFeature(handleToUnmount: Updatable<FeatureRenderSpec> | void) {
+    unmountFeature(handleToUnmount) {
       handleToUnmount?.dispose();
     },
-    /**
-     * 在指定屏幕位置拾取要素
-     *
-     * @param point - 屏幕坐标点
-     * @returns 拾取到的要素数据，未拾取到返回 undefined
-     */
-    pick(point: ScreenPoint) {
-      return PickingBridge.pick(ensureHandle(), point as unknown as Cesium.Cartesian2);
+    mountWeatherEffect(spec) {
+      return { id: spec.id, update() {}, dispose() {} } as any;
     },
-    /**
-     * 将经纬度坐标投影为三维坐标
-     *
-     * @param position - 经纬度坐标
-     * @returns 投影后的三维坐标
-     */
+    unmountWeatherEffect(handleToUnmount) {
+      handleToUnmount?.dispose();
+    },
+    pickAt(point: ScreenPoint) {
+      return PickingBridge.pick(ensureHandle(), point as unknown as Cesium.Cartesian2) as any;
+    },
     project(position: LngLat) {
       return toCartesian3(position) as unknown as { x: number; y: number; z?: number };
     },
-    /**
-     * 获取底层 Cesium Viewer 实例（逃生舱口）
-     *
-     * @returns {Cesium.Viewer | undefined} 原生 Cesium Viewer 实例
-     */
+    unproject(p) {
+      return { lng: p.x, lat: p.y, alt: p.z } as any;
+    },
     unsafeNative() {
       return _getInternalViewer(ensureHandle());
     },
-  };
+  } as CesiumRuntime;
 }
 
 export function createCesiumRuntime(handle: CesiumViewerHandle): CesiumRuntime {
   const runtime = createCesiumAdapter({ viewer: handle });
   return {
     kind: 'cesium',
-    bootstrap(options?: CoreViewerOptions) {
-      return runtime.initialize?.('', options);
+    bootstrap(options: CoreViewerOptions) {
+      return runtime.bootstrap(options);
     },
     dispose() {
-      return runtime.dispose?.();
+      return runtime.dispose();
     },
     mountLayer(spec: LayerRenderSpec) {
-      return runtime.mountLayer?.(spec);
+      return runtime.mountLayer(spec);
     },
-    unmountLayer(handleToUnmount: Updatable<LayerRenderSpec> | void) {
+    unmountLayer(handleToUnmount) {
       return runtime.unmountLayer?.(handleToUnmount);
     },
     mountFeature(spec: FeatureRenderSpec) {
-      return runtime.mountFeature?.(spec);
+      return runtime.mountFeature(spec);
     },
-    unmountFeature(handleToUnmount: Updatable<FeatureRenderSpec> | void) {
+    unmountFeature(handleToUnmount) {
       return runtime.unmountFeature?.(handleToUnmount);
     },
     mountWeatherEffect(spec) {
-      return runtime.mountWeatherEffect?.(spec);
+      return runtime.mountWeatherEffect(spec);
     },
     unmountWeatherEffect(handleToUnmount) {
       return runtime.unmountWeatherEffect?.(handleToUnmount);
     },
-    pick(point: ScreenPoint) {
-      return runtime.pick?.(point);
+    pickAt(point: ScreenPoint) {
+      return runtime.pickAt(point);
     },
     project(position: LngLat) {
-      return runtime.project?.(position) ?? { x: 0, y: 0 };
+      return runtime.project(position);
     },
     unproject(point) {
-      return runtime.unproject?.(point) ?? { lng: 0, lat: 0 };
+      return runtime.unproject(point);
     },
     unsafeNative() {
       return runtime.unsafeNative?.();

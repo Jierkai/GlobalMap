@@ -16,7 +16,7 @@
 
 import * as Cesium from 'cesium';
 import type { 
-  ViewerOptions, 
+  CesiumViewerOptions, 
   CesiumViewerHandle, 
   NativeScene, 
   NativeCamera, 
@@ -74,7 +74,7 @@ const viewerMap = new WeakMap<CesiumViewerHandle, Cesium.Viewer>();
  * handle.destroy();
  * ```
  */
-export function createViewer(container: HTMLElement | string, options: ViewerOptions = {}): CesiumViewerHandle {
+export function createViewer(container: HTMLElement | string, options: CesiumViewerOptions = {}): CesiumViewerHandle {
   const viewer = new Cesium.Viewer(container, options);
 
   // 创建句柄对象，提供对 Viewer 的抽象访问
