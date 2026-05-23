@@ -5,8 +5,8 @@ import {
   type CesiumRuntime,
   type CesiumViewerHandle,
   type CesiumViewerOptions,
-  type LayerRenderSpec,
 } from '@cgx/adapter-cesium';
+import type { LayerRenderSpec } from '../spec/layer.js';
 import { TypedEmitter, type Off } from '../typed-events/Emitter.js';
 import { CgxError, ErrorCodes } from '../errors/CgxError.js';
 import type { Capability } from '../capability/Capability.js';
