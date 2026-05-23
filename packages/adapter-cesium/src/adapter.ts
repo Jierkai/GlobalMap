@@ -36,15 +36,22 @@ import { toCartesian3 } from './coord';
 import { EntityBase } from './entity';
 import { LayerBridge } from './layer';
 import { resolveProvider } from './handles/_provider';
+import {
+  createImageryLayerHandle,
+  createTerrainLayerHandle,
+  createTilesetLayerHandle,
+  createDataSourceLayerHandle,
+  createGraphicLayerHandle,
+  createEntityFeatureHandle,
+  createPrimitiveFeatureHandle,
+  createBatchedPrimitiveFeatureHandle,
+  createWeatherEffectHandle,
+} from './handles';
 import { PickingBridge } from './picking';
 import { PrimitiveBase } from './primitive';
 import type { CesiumViewerHandle, CesiumViewerOptions } from './types';
+import type { LayerHandle, FeatureHandle } from '@cgx/core';
 import { createViewer, _getInternalViewer } from './viewer';
-
-/**
- * 图层句柄类型，扩展了 Updatable 接口并包含原始数据引用
- */
-type LayerHandle = Updatable<LayerRenderSpec> & { raw?: unknown };
 
 type MountedLayerEntry = {
   spec: LayerRenderSpec;
@@ -1188,177 +1195,28 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): C
    * @param spec - 要素渲染规格
    * @returns {Updatable<FeatureRenderSpec>} 要素句柄，支持更新和销毁
    */
-  const mountFeatureSpec = (spec: FeatureRenderSpec): Updatable<FeatureRenderSpec> => {
+  const mountFeatureSpec = (spec: FeatureRenderSpec): FeatureHandle => {
     const viewerHandle = ensureHandle();
     const mode = resolveFeatureMode(spec);
-
-    // 模型要素使用 Primitive 模式渲染
     if (spec.kind === 'model' && mode === 'primitive') {
-      const primitive = new ModelPrimitive(viewerHandle, spec);
-      void primitive.init();
-      return {
-        update(next: FeatureRenderSpec) {
-          if (next.kind === 'model') primitive.updateSpec(next);
-        },
-        dispose() {
-          primitive.dispose();
-        },
-      };
+      return createPrimitiveFeatureHandle(viewerHandle, spec);
     }
-
-    // 非模型要素使用 Primitive 批量模式渲染
     if (spec.kind !== 'model' && mode === 'primitive') {
-      const batch = new PrimitiveFeatureBatch(viewerHandle, spec.id);
-      batch.updateFeatures([spec]);
-      return {
-        update(next: FeatureRenderSpec) {
-          batch.updateFeatures([next]);
-        },
-        dispose() {
-          batch.dispose();
-        },
-      };
+      return createBatchedPrimitiveFeatureHandle(viewerHandle, [spec]);
     }
-
-    // 默认使用 Entity 模式渲染
-    const entity = new FeatureEntity(viewerHandle, spec);
-    void entity.init();
-    return {
-      update(next: FeatureRenderSpec) {
-        entity.updateSpec(next);
-      },
-      dispose() {
-        entity.dispose();
-      },
-    };
+    return createEntityFeatureHandle(viewerHandle, spec);
   };
 
-  /**
-   * 挂载数据图层到场景
-   *
-   * @description
-   * 支持以下数据源类型：
-   * - geojson: 使用 GeoJsonDataSource 加载
-   * - tileset: 使用 Cesium3DTileset 加载
-   * - point-cloud: 使用 Cesium3DTileset 加载点云数据
-   *
-   * 包含竞态保护机制，确保在快速切换图层时不会出现状态不一致。
-   *
-   * @param spec - 数据图层渲染规格
-   * @returns {LayerHandle} 图层句柄，支持更新和销毁
-   */
-  const mountDataLayer = (spec: DataLayerRenderSpec): LayerHandle => {
-    /** 是否已销毁 */
-    let disposed = false;
-    /** 当前加载的原始数据源对象 */
-    let raw: unknown;
-    /** 当前图层规格引用 */
-    let current = spec;
-    /** 加载版本号，用于竞态保护 */
-    let loadVersion = 0;
-
-    /**
-     * 异步加载数据源并挂载到场景
-     *
-     * @param next - 数据图层渲染规格
-     */
-    const attach = async (next: DataLayerRenderSpec) => {
-      const viewerHandle = ensureHandle();
-      const payload = payloadRecord(next.payload);
-      const version = ++loadVersion;
-
-      // 加载 GeoJSON 数据源
-      if (next.sourceType === 'geojson') {
-        const load = (Cesium as any).GeoJsonDataSource?.load;
-        if (typeof load !== 'function') return;
-        const dataSource = await load(next.payload, next.options);
-        if (disposed || current !== next) return;
-        const mounted = await LayerBridge.addDataSource(viewerHandle, dataSource);
-        if (disposed || current !== next || version !== loadVersion) {
-          if (mounted) LayerBridge.removeDataSource(viewerHandle, mounted);
-          return;
-        }
-        raw = mounted;
-        applyCommonVisibility(raw as Record<string, unknown> | undefined, next);
-        return;
-      }
-
-      // 加载 3D Tileset 或点云数据
-      if (next.sourceType === 'tileset' || next.sourceType === 'point-cloud') {
-        const url = payload.url;
-        if (typeof url !== 'string') return;
-        const mounted = await LayerBridge.add3DTileset(viewerHandle, url, next.options);
-        if (disposed || current !== next || version !== loadVersion) {
-          if (mounted) LayerBridge.remove3DTileset(viewerHandle, mounted);
-          return;
-        }
-        raw = mounted;
-        applyCommonVisibility(raw as Record<string, unknown> | undefined, next);
-      }
-    };
-
-    void attach(spec);
-
-    return {
-      get raw() {
-        return raw;
-      },
-      update(next: LayerRenderSpec) {
-        current = next as DataLayerRenderSpec;
-        applyCommonVisibility(raw as Record<string, unknown> | undefined, current);
-      },
-      dispose() {
-        disposed = true;
-        loadVersion += 1;
-        const viewerHandle = handle;
-        if (!viewerHandle || !raw) return;
-        if (current.sourceType === 'geojson') {
-          LayerBridge.removeDataSource(viewerHandle, raw as Cesium.DataSource);
-        } else if (current.sourceType === 'tileset' || current.sourceType === 'point-cloud') {
-          LayerBridge.remove3DTileset(viewerHandle, raw as Cesium.Cesium3DTileset);
-        }
-        raw = undefined;
-      },
-    };
-  };
-
-  const mountLayerSpec = (spec: LayerRenderSpec): LayerHandle | void => {
+  const mountLayerSpec = (spec: LayerRenderSpec): LayerHandle | undefined => {
     const viewerHandle = ensureHandle();
-
-    // 挂载影像图层
-    if (spec.kind === 'imagery') {
-      const layer = LayerBridge.addImageryLayer(viewerHandle, resolveProvider(spec.provider) as Cesium.ImageryProvider);
-      applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, spec);
-      return {
-        update(next: LayerRenderSpec) {
-          applyCommonVisibility(layer as unknown as Record<string, unknown> | undefined, next);
-        },
-        dispose() {
-          if (layer) LayerBridge.removeImageryLayer(viewerHandle, layer);
-        },
-      };
-    }
-
-    // 挂载地形图层
-    if (spec.kind === 'terrain') {
-      LayerBridge.setTerrainProvider(viewerHandle, resolveProvider(spec.provider) as Cesium.TerrainProvider);
-      return {
-        update() {},
-        dispose() {
-          LayerBridge.removeTerrainProvider(viewerHandle);
-        },
-      };
-    }
-
-    // 挂载数据图层
+    if (spec.kind === 'imagery') return createImageryLayerHandle(viewerHandle, spec);
+    if (spec.kind === 'terrain') return createTerrainLayerHandle(viewerHandle, spec);
     if (spec.kind === 'data') {
-      return mountDataLayer(spec);
+      if (spec.sourceType === 'geojson') return createDataSourceLayerHandle(viewerHandle, spec);
+      return createTilesetLayerHandle(viewerHandle, spec);
     }
-
-    // 挂载图形图层
-    if (spec.kind === 'graphic') {
-      return new GraphicLayerMount(viewerHandle, spec, mountFeatureSpec);
-    }
+    if (spec.kind === 'graphic') return createGraphicLayerHandle(viewerHandle, spec, mountFeatureSpec as any);
+    return undefined;
   };
 
   const disposeMountedEntries = (entries: MountedLayerEntry[]): void => {
@@ -1437,19 +1295,23 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): C
       ownsHandle = false;
     },
     mountLayer(spec: LayerRenderSpec) {
-      return mountLayerSpec(spec) as any;
+      const handle = mountLayerSpec(spec);
+      if (!handle) {
+        throw new Error(`Unsupported layer kind: ${(spec as { kind?: string }).kind ?? 'unknown'}`);
+      }
+      return handle;
     },
     unmountLayer(handleToUnmount) {
       handleToUnmount?.dispose();
     },
     mountFeature(spec: FeatureRenderSpec) {
-      return mountFeatureSpec(spec) as any;
+      return mountFeatureSpec(spec);
     },
     unmountFeature(handleToUnmount) {
       handleToUnmount?.dispose();
     },
     mountWeatherEffect(spec) {
-      return { id: spec.id, update() {}, dispose() {} } as any;
+      return createWeatherEffectHandle(ensureHandle(), spec);
     },
     unmountWeatherEffect(handleToUnmount) {
       handleToUnmount?.dispose();
