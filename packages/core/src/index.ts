@@ -1,4 +1,12 @@
-export { CgxViewer, createViewer, getViewerRuntime, type CgxViewerOptions, type ViewerStatus, type TypedEvents } from './viewer/CgxViewer.js';
+export {
+  CgxViewer,
+  createViewer,
+  getViewerRuntime,
+  type CgxViewerOptions,
+  type ViewerStatus,
+  type TypedEvents,
+} from './viewer/CgxViewer.js';
+
 export {
   type BasemapSpecBase,
   type GaodeBasemapSpec,
@@ -14,47 +22,28 @@ export {
   type TerrainOptions,
   type ViewerOptions,
 } from './types.js';
+
 export { type Capability, CameraOps, ClockOps, InputOps } from './capability/Capability.js';
 export { createVitalsHud, type VitalsHud, type VitalsConfig } from './vitals/VitalsHud.js';
 export { CgxError, ErrorCodes } from './errors/CgxError.js';
 export { TypedEmitter, type Emitter, type Off } from './typed-events/Emitter.js';
-export { defineFsm, type FsmInstance, type FsmDefinition, type FsmTransition, type FsmHooks } from './fsm/Fsm.js';
 export {
-  type Disposable,
-  type Updatable,
-  type ScreenPoint,
-  type LngLat,
-  type CartesianPoint3D,
-  type ImageryLayerRenderSpec,
-  type TerrainLayerRenderSpec,
-  type GraphicLayerRenderSpec,
-  type DataLayerRenderSpec,
-  type LayerRenderSpec,
-  type GraphicRenderMode,
-  type LabelRenderSpec,
-  type ModelRenderMode,
-  type PointFeatureRenderSpec,
-  type PolylineFeatureRenderSpec,
-  type PolygonFeatureRenderSpec,
-  type ModelFeatureRenderSpec,
-  type LabelFeatureRenderSpec,
-  type TextFeatureRenderSpec,
-  type BillboardFeatureRenderSpec,
-  type FeatureRenderSpec,
-  type WeatherEffectSpec,
-} from './spec/index.js';
-export {
-  type EngineAdapter,
-} from './adapter/EngineAdapter.js';
-export {
-  type Handle,
-  type UpdatableHandle,
-  type LayerHandle,
-  type FeatureHandle,
-  type EffectHandle,
-  type EventHandle,
-  type FlyToOptions,
-} from './handle/index.js';
+  defineFsm,
+  type FsmInstance,
+  type FsmDefinition,
+  type FsmTransition,
+  type FsmHooks,
+} from './fsm/Fsm.js';
+
+// Spec module (engine-neutral)
+export * from './spec/index.js';
+
+// Handle contracts
+export * from './handle/index.js';
+
+// EngineAdapter contract (defined locally in core)
+export type { EngineAdapter, PickResult } from './adapter/EngineAdapter.js';
+
 export {
   type Point2D,
   type Constraint,
