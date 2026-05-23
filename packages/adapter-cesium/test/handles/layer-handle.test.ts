@@ -4,6 +4,10 @@ import {
   createImageryLayerHandle,
   createTerrainLayerHandle,
 } from '../../src/handles/layer';
+import {
+  createTilesetLayerHandle,
+  createDataSourceLayerHandle,
+} from '../../src/handles/layer';
 
 const fakeViewerHandle = { destroy: vi.fn() } as any;
 
@@ -29,5 +33,36 @@ describe('terrain LayerHandle factory', () => {
     expect(handle.id).toBe('t1');
     expect(typeof handle.dispose).toBe('function');
     expect(typeof handle.setVisible).toBe('function');
+  });
+});
+
+describe('tileset / dataSource LayerHandle factories', () => {
+  it('tileset handle has Handle shape', () => {
+    const h = createTilesetLayerHandle(fakeViewerHandle, {
+      id: 'ts', kind: 'data', sourceType: 'tileset', payload: { url: 'x' },
+    });
+    expect(h.id).toBe('ts');
+    expect(typeof h.dispose).toBe('function');
+    expect(typeof h.update).toBe('function');
+    expect(typeof h.setVisible).toBe('function');
+    expect(typeof h.unsafeNative).toBe('function');
+  });
+
+  it('dataSource handle has Handle shape', () => {
+    const h = createDataSourceLayerHandle(fakeViewerHandle, {
+      id: 'ds', kind: 'data', sourceType: 'geojson',
+      payload: { type: 'FeatureCollection', features: [] },
+    });
+    expect(h.id).toBe('ds');
+    expect(typeof h.dispose).toBe('function');
+    expect(typeof h.update).toBe('function');
+  });
+
+  it('tileset handle dispose is idempotent', () => {
+    const h = createTilesetLayerHandle(fakeViewerHandle, {
+      id: 't2', kind: 'data', sourceType: 'tileset', payload: { url: 'x' },
+    });
+    h.dispose();
+    expect(() => h.dispose()).not.toThrow();
   });
 });
