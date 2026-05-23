@@ -11,3 +11,5 @@ export {
   createPrimitiveFeatureHandle,
   createBatchedPrimitiveFeatureHandle,
 } from './feature-primitive';
+
+export { createWeatherEffectHandle } from './effect';
