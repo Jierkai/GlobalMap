@@ -534,7 +534,7 @@ function buildEntityOptions(spec: FeatureRenderSpec): Cesium.Entity.ConstructorO
  * 继承自 EntityBase，将 FeatureRenderSpec 转换为 Cesium Entity。
  * 负责管理单个要素的 Entity 生命周期和拾取绑定。
  */
-class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
+export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
   /** 要素渲染规格 */
   private spec: FeatureRenderSpec;
 
@@ -597,7 +597,7 @@ class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.
  * 继承自 PrimitiveBase，将 ModelFeatureRenderSpec 转换为 Cesium Primitive。
  * 用于以 Primitive 模式渲染 3D 模型要素。
  */
-class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
+export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
   /** 模型要素渲染规格 */
   private spec: ModelFeatureRenderSpec;
 
@@ -743,7 +743,7 @@ function createPrimitiveCollection(kind: PrimitiveBatchKind, id: string): any {
  * 按要素类型（点、广告牌、标签、线、面）分组到不同的 Cesium 集合中，
  * 提供高效的批量更新和清理能力。
  */
-class PrimitiveFeatureBatch {
+export class PrimitiveFeatureBatch {
   /** 按类型分组的原语集合映射 */
   private readonly collections = new Map<PrimitiveBatchKind, PrimitiveBatchCollection>();
   /** 是否已销毁 */
