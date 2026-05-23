@@ -7,6 +7,7 @@ import type {
 } from '@cgx/core';
 import type { CesiumViewerHandle } from '../types';
 import { LayerBridge } from '../layer';
+import { resolveProvider } from './_provider';
 
 export function createImageryLayerHandle(
   viewer: CesiumViewerHandle,
@@ -14,7 +15,7 @@ export function createImageryLayerHandle(
 ): LayerHandle {
   const cesiumLayer = LayerBridge.addImageryLayer(
     viewer,
-    spec.provider as unknown as Cesium.ImageryProvider,
+    resolveProvider(spec.provider) as Cesium.ImageryProvider | Promise<Cesium.ImageryProvider>,
   );
   applyVisibility(cesiumLayer as unknown as Record<string, unknown> | undefined, spec);
 
@@ -43,7 +44,7 @@ export function createTerrainLayerHandle(
   viewer: CesiumViewerHandle,
   spec: TerrainLayerRenderSpec,
 ): LayerHandle {
-  LayerBridge.setTerrainProvider(viewer, spec.provider as unknown as Cesium.TerrainProvider);
+  LayerBridge.setTerrainProvider(viewer, resolveProvider(spec.provider) as Cesium.TerrainProvider);
 
   return {
     id: spec.id,
