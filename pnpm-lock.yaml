@@ -69,13 +69,13 @@ importers:
 
   packages/core:
     dependencies:
-      '@cgx/adapter-cesium':
-        specifier: workspace:*
-        version: link:../adapter-cesium
       '@cgx/reactive':
         specifier: workspace:*
         version: link:../reactive
     devDependencies:
+      '@cgx/adapter-cesium':
+        specifier: workspace:*
+        version: link:../adapter-cesium
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
         version: 12.1.0(size-limit@12.1.0)

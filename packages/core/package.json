@@ -17,10 +17,13 @@
     "size": "size-limit"
   },
   "dependencies": {
-    "@cgx/adapter-cesium": "workspace:*",
     "@cgx/reactive": "workspace:*"
   },
+  "peerDependencies": {
+    "@cgx/adapter-cesium": "workspace:*"
+  },
   "devDependencies": {
+    "@cgx/adapter-cesium": "workspace:*",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^20.9.0",
