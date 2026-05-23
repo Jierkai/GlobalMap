@@ -1,4 +1,4 @@
-import type { ScreenPoint } from '../adapter/EngineAdapter.js';
+import type { ScreenPoint } from '../spec/index.js';
 
 export interface ScreenInteractSource {
   canvas: EventTarget;

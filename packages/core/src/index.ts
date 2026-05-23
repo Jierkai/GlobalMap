@@ -42,6 +42,8 @@ export {
   type BillboardFeatureRenderSpec,
   type FeatureRenderSpec,
   type WeatherEffectSpec,
+} from './spec/index.js';
+export {
   type EngineAdapter,
 } from './adapter/EngineAdapter.js';
 export {
