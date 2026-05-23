@@ -47,6 +47,15 @@ export {
   type EngineAdapter,
 } from './adapter/EngineAdapter.js';
 export {
+  type Handle,
+  type UpdatableHandle,
+  type LayerHandle,
+  type FeatureHandle,
+  type EffectHandle,
+  type EventHandle,
+  type FlyToOptions,
+} from './handle/index.js';
+export {
   type Point2D,
   type Constraint,
   type ConstraintContext,

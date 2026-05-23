@@ -18,8 +18,11 @@ export interface PickResult {
 export interface EngineAdapter {
   bootstrap(opts: ViewerOptions): Promise<void>;
   mountLayer(spec: LayerRenderSpec): LayerHandle;
+  unmountLayer?(handle: LayerHandle | void): void | Promise<void>;
   mountFeature(spec: FeatureRenderSpec): FeatureHandle;
+  unmountFeature?(handle: FeatureHandle | void): void | Promise<void>;
   mountWeatherEffect(spec: WeatherEffectSpec): EffectHandle;
+  unmountWeatherEffect?(handle: EffectHandle | void): void | Promise<void>;
   pickAt(point: ScreenPoint): PickResult | null;
   project(p: LngLat): CartesianPoint3D;
   unproject(p: CartesianPoint3D): LngLat;

@@ -1,5 +1,5 @@
 import { effect } from '@cgx/reactive';
-import type { EngineAdapter, FeatureRenderSpec, LabelRenderSpec, ModelRenderMode, Updatable } from '@cgx/core';
+import type { EngineAdapter, FeatureHandle, FeatureRenderSpec, LabelRenderSpec, ModelRenderMode } from '@cgx/core';
 import { createFeature, type FeatureOptions, type Feature } from './Feature.js';
 
 /**
@@ -39,7 +39,7 @@ function buildLabelSpec(opts: { text?: string; font?: string; scale?: number; la
 }
 
 interface MountedFeatureHandle<T extends FeatureRenderSpec> {
-  handle: Updatable<T> | void;
+  handle: FeatureHandle | void;
   dispose(): void;
 }
 

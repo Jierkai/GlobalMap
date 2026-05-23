@@ -1,5 +1,5 @@
 import { effect } from '@cgx/reactive';
-import type { DataLayerRenderSpec, EngineAdapter, LayerRenderSpec, Updatable } from '@cgx/core';
+import type { DataLayerRenderSpec, EngineAdapter, LayerHandle, LayerRenderSpec } from '@cgx/core';
 import { BaseLayer } from './types.js';
 
 /**
@@ -49,7 +49,7 @@ export class DataLayer extends BaseLayer {
   readonly options: Record<string, unknown> | undefined;
 
   /** @internal 挂载句柄 */
-  private _mountHandle: Updatable<LayerRenderSpec> | void = undefined;
+  private _mountHandle: LayerHandle | void = undefined;
 
   /** @internal 响应式副作用清理函数 */
   private _effectDisposer: (() => void) | null = null;

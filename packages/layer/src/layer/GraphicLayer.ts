@@ -1,5 +1,5 @@
 import { effect, signal, type Signal } from '@cgx/reactive';
-import type { EngineAdapter, GraphicLayerRenderSpec, GraphicRenderMode, LayerRenderSpec, Updatable } from '@cgx/core';
+import type { EngineAdapter, GraphicLayerRenderSpec, GraphicRenderMode, LayerHandle, LayerRenderSpec } from '@cgx/core';
 import {
   createBillboardFeature,
   createLabelFeature,
@@ -99,7 +99,7 @@ export class GraphicLayer extends BaseLayer {
   private _adapterRef: EngineAdapter | null = null;
 
   /** @internal 图层挂载句柄 */
-  private _layerMountHandle: Updatable<LayerRenderSpec> | void = undefined;
+  private _layerMountHandle: LayerHandle | void = undefined;
 
   /** @internal 图层通道响应式副作用清理函数 */
   private _layerEffectDisposer: (() => void) | null = null;
