@@ -1,4 +1,4 @@
-import type { GraphicRenderMode, LayerRenderSpec, GraphicLayerRenderSpec } from './layer.js';
+import type { GraphicRenderMode } from './layer.js';
 
 export interface LabelRenderSpec extends Record<string, unknown> {
   text?: string;
@@ -75,12 +75,3 @@ export type FeatureRenderSpec =
   | LabelFeatureRenderSpec
   | TextFeatureRenderSpec
   | BillboardFeatureRenderSpec;
-
-// Strict alias: tightens GraphicLayerRenderSpec.graphics from unknown[] to FeatureRenderSpec[]
-export type GraphicLayerRenderSpecStrict = Omit<GraphicLayerRenderSpec, 'graphics'> & {
-  graphics?: FeatureRenderSpec[];
-};
-
-export type LayerRenderSpecStrict =
-  | Exclude<LayerRenderSpec, GraphicLayerRenderSpec>
-  | GraphicLayerRenderSpecStrict;

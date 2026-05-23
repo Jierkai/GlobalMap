@@ -1,3 +1,5 @@
+import type { FeatureRenderSpec } from './feature.js';
+
 export type GraphicRenderMode = 'entity' | 'primitive' | 'auto';
 
 export interface LayerRenderSpecBase {
@@ -20,7 +22,7 @@ export interface TerrainLayerRenderSpec extends LayerRenderSpecBase {
 
 export interface GraphicLayerRenderSpec extends LayerRenderSpecBase {
   kind: 'graphic';
-  graphics?: unknown[]; // tightened to FeatureRenderSpec[] in Task 4
+  graphics?: FeatureRenderSpec[];
   clustering?: Record<string, unknown>;
   renderMode?: GraphicRenderMode;
 }

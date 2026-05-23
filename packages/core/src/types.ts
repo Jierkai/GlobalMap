@@ -1,4 +1,5 @@
-import type { ImageryLayerRenderSpec, LayerRenderSpec, LngLat } from '@cgx/adapter-cesium';
+import type { ImageryLayerRenderSpec, LayerRenderSpec } from './spec/layer.js';
+import type { LngLat } from './spec/primitive.js';
 
 export type SceneCenter = LngLat & {
   heading?: number;
@@ -78,4 +79,3 @@ export interface ViewerOptions {
   basemaps?: BasemapSpec[];
   layers?: LayerRenderSpec[];
 }
- 
