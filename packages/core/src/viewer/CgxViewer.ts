@@ -1,48 +1,26 @@
 import { signal, type ReadonlySignal } from '@cgx/reactive';
-import {
-  createCesiumRuntime,
-  createViewer as createCesiumViewer,
-  type CesiumRuntime,
-  type CesiumViewerHandle,
-  type CesiumViewerOptions,
-} from '@cgx/adapter-cesium';
 import type { LayerRenderSpec } from '../spec/layer.js';
 import { TypedEmitter, type Off } from '../typed-events/Emitter.js';
 import { CgxError, ErrorCodes } from '../errors/CgxError.js';
 import type { Capability } from '../capability/Capability.js';
 import type { BasemapSpec, SceneOptions, TerrainOptions, ViewerOptions } from '../types.js';
+import type { EngineAdapter } from '../adapter/EngineAdapter.js';
 
-/**
- * 创建 CgxViewer 实例的配置项。
- */
 export interface CgxViewerOptions {
-  /** Viewer 容器元素或元素 ID。 */
-  container: string | HTMLElement;
-  /** Cesium Viewer 原生构造配置。 */
-  cesium?: CesiumViewerOptions;
-  /** 场景初始化配置。 */
+  adapter: EngineAdapter;
   scene?: SceneOptions;
-  /** 地形初始化配置。 */
   terrain?: TerrainOptions;
-  /** 初始化底图配置。 */
   basemaps?: BasemapSpec[];
-  /** 初始化图层配置。 */
   layers?: LayerRenderSpec[];
 }
 
-/** 表示视图生命周期的状态。 */
 export type ViewerStatus = 'idle' | 'ready' | 'disposing' | 'disposed';
 
-/** 返回视图状态的响应式信号。 */
 export type ViewerStatusSignal = ReadonlySignal<ViewerStatus>;
 
-/** 视图派发的强类型事件。 */
 export interface TypedEvents {
-  /** 当视图成功挂载并初始化时触发。 */
   ready: { viewer: CgxViewer };
-  /** 在视图开始卸载和销毁之前触发。 */
   dispose: { viewer: CgxViewer };
-  /** 初始化过程中发生严重错误时触发。 */
   error: { error: Error };
   [key: string]: unknown;
 }
@@ -53,18 +31,10 @@ interface InstalledCapabilityRecord {
   exposedKey?: string;
 }
 
-/**
- * Cgx 框架的核心 Viewer 实例。
- * 提供响应式生命周期、强类型的事件派发以及基于能力组合的插件系统。
- */
 export class CgxViewer {
-  /** 视图实例的唯一标识符。 */
   readonly id: string;
-  /** 持有当前生命周期状态的响应式信号。 */
   readonly status: ViewerStatusSignal;
-  /** Cesium runtime 实例。 */
-  private readonly runtime: CesiumRuntime;
-  private readonly handle: CesiumViewerHandle;
+  private readonly adapter: EngineAdapter;
 
   private readonly emitter: TypedEmitter<TypedEvents>;
   private readonly installedCapabilities = new Map<string, InstalledCapabilityRecord>();
@@ -78,26 +48,20 @@ export class CgxViewer {
   private isDisposing = false;
 
   constructor(opts: CgxViewerOptions) {
-    const { container } = opts;
-    if (typeof container !== 'string' && !(container instanceof HTMLElement)) {
-      throw new CgxError(ErrorCodes.INVALID_ARGUMENT, 'Container must be an HTMLElement or a string ID');
-    }
-    if (typeof container === 'string' && container.trim() === '') {
-      throw new CgxError(ErrorCodes.INVALID_ARGUMENT, 'Container must be an HTMLElement or a string ID');
+    if (!opts.adapter) {
+      throw new CgxError(ErrorCodes.INVALID_ARGUMENT, 'adapter is required');
     }
     this.id = crypto.randomUUID();
     this.status = this._status;
     this.options = this.normalizeOptions(opts);
     this.validateBaseOptions();
 
-    this.handle = createCesiumViewer(container, opts.cesium);
-    this.runtime = createCesiumRuntime(this.handle);
+    this.adapter = opts.adapter;
     this.emitter = new TypedEmitter<TypedEvents>((_event, error) => {
       this.notifyUncaught(error);
     });
   }
 
-  /** 初始化视图及其适配器。当完全准备就绪时决议 Promise。 */
   ready(): Promise<void> {
     if (this.isDisposed || this.isDisposing) {
       return Promise.reject(
@@ -109,7 +73,7 @@ export class CgxViewer {
 
     this.readyPromise = (async () => {
       try {
-        await this.runtime.bootstrap?.(this.options);
+        await this.adapter.bootstrap(this.options);
 
         if (this.isDisposed || this.isDisposing) {
           throw new CgxError(ErrorCodes.VIEWER_NOT_READY, 'Viewer was disposed before initialization completed');
@@ -129,7 +93,6 @@ export class CgxViewer {
     return this.readyPromise;
   }
 
-  /** 幂等性地销毁视图、适配器及所有已安装的能力插件。 */
   dispose(): Promise<void> {
     if (this.disposePromise) return this.disposePromise;
 
@@ -161,11 +124,10 @@ export class CgxViewer {
       this.installedCapabilities.clear();
 
       try {
-        await this.runtime.dispose?.();
-        this.handle.destroy();
+        await this.adapter.dispose();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        this.reportError('Error disposing Cesium runtime', error);
+        this.reportError('Error disposing adapter', error);
       }
 
       this.isDisposed = true;
@@ -176,36 +138,26 @@ export class CgxViewer {
     return this.disposePromise;
   }
 
-  /** 返回底层 Cesium Viewer 对象。 */
   getCesiumViewer(): unknown {
-    return this.runtime.unsafeNative?.();
+    return this.adapter.unsafeNative?.();
   }
 
-  /** 返回底层 Cesium Viewer 对象。 */
   unsafeNative(): unknown {
     return this.getCesiumViewer();
   }
 
-  /** 订阅一个强类型事件。 */
   on<K extends keyof TypedEvents>(event: K, handler: (payload: TypedEvents[K]) => void): Off {
     return this.emitter.on(event, handler);
   }
 
-  /** 仅订阅一次强类型事件。 */
   once<K extends keyof TypedEvents>(event: K, handler: (payload: TypedEvents[K]) => void): Off {
     return this.emitter.once(event, handler);
   }
 
-  /** 取消订阅一个强类型事件。如果未提供处理函数，则移除该事件下的所有处理函数。 */
   off<K extends keyof TypedEvents>(event: K, handler?: (payload: TypedEvents[K]) => void): void {
     this.emitter.off(event, handler);
   }
 
-  /**
-   * 将一个能力插件注入到视图中。
-   * 如果该能力已被安装，将抛出错误。
-   * @param capability 要安装的能力插件。
-   */
   use<T>(capability: Capability<T>): T {
     this.assertActive();
 
@@ -236,10 +188,6 @@ export class CgxViewer {
     }
   }
 
-  /**
-   * 注册一个用于捕获事件派发或渲染期间未被捕获错误的处理函数。
-   * @param handler 错误回调函数。
-   */
   onUncaught(handler: (error: Error) => void): Off {
     this.uncaughtHandlers.add(handler);
     return () => this.uncaughtHandlers.delete(handler);
@@ -269,8 +217,6 @@ export class CgxViewer {
   }
 
   private validateBaseOptions(): void {
-
-
     const { scene, basemaps, layers } = this.options;
     if (scene?.center) {
       const { lng, lat } = scene.center;
@@ -346,13 +292,6 @@ export class CgxViewer {
   }
 }
 
-export function getViewerRuntime(viewer: CgxViewer): CesiumRuntime {
-  return (viewer as unknown as { readonly runtime: CesiumRuntime }).runtime;
-}
-
-/**
- * 创建一个新的 CgxViewer 实例。
- */
-export function createViewer(opts: CgxViewerOptions): CgxViewer {
-  return new CgxViewer(opts);
+export function getViewerRuntime(viewer: CgxViewer): EngineAdapter {
+  return (viewer as unknown as { readonly adapter: EngineAdapter }).adapter;
 }

@@ -1,6 +1,5 @@
 export {
   CgxViewer,
-  createViewer,
   getViewerRuntime,
   type CgxViewerOptions,
   type ViewerStatus,
