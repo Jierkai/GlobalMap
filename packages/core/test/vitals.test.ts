@@ -1,26 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { createVitalsHud } from '../src/vitals/VitalsHud.js';
+import type { EngineAdapter } from '../src/adapter/EngineAdapter.js';
 
-const mocks = vi.hoisted(() => {
-  const handle = { destroy: vi.fn() };
-  const runtime = {
+function createMockAdapter(): EngineAdapter {
+  return {
     bootstrap: vi.fn(),
     dispose: vi.fn(),
+    mountLayer: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn() })),
+    unmountLayer: vi.fn(),
+    mountFeature: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn() })),
+    unmountFeature: vi.fn(),
+    mountWeatherEffect: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn() })),
+    unmountWeatherEffect: vi.fn(),
+    pickAt: vi.fn(() => null),
+    project: vi.fn(() => ({ x: 0, y: 0, z: 0 })),
+    unproject: vi.fn(() => ({ lng: 0, lat: 0, alt: 0 })),
     unsafeNative: vi.fn(),
   };
-  return {
-    handle,
-    runtime,
-    createCesiumViewer: vi.fn(() => handle),
-    createCesiumRuntime: vi.fn(() => runtime),
-  };
-});
-
-vi.mock('@cgx/adapter-cesium', () => ({
-  createViewer: mocks.createCesiumViewer,
-  createCesiumRuntime: mocks.createCesiumRuntime,
-}));
+}
 
 describe('VitalsHud', () => {
   beforeEach(() => {
@@ -32,19 +30,16 @@ describe('VitalsHud', () => {
   });
 
   it('should not attach if not dev and not enabled', () => {
-    const viewer = new CgxViewer({ container: 'app' });
-    // Assuming Vite test runs with import.meta.env.DEV = true by default, 
-    // so we disable it explicitly, or we override.
-    // By default, let's explicitly disable to see if it attaches.
-    // Wait, import.meta.env.DEV might be true in vitest. 
-    // Let's test explicit attach and detach.
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
     const hud = createVitalsHud(viewer, { enabled: true });
     expect(hud).not.toBeNull();
     expect(document.querySelector('.cgx-vitals-hud')).not.toBeNull();
   });
 
   it('should clean up DOM upon detach', () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
     const hud = createVitalsHud(viewer, { enabled: true });
     
     expect(document.querySelector('.cgx-vitals-hud')).not.toBeNull();

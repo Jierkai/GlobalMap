@@ -6,9 +6,8 @@ import { createXyzProvider } from '../src/provider/xyz.js';
 import { effect } from '@cgx/reactive';
 
 const mocks = vi.hoisted(() => {
-  const handle = { destroy: vi.fn() };
   const layerHandle = { dispose: vi.fn(), update: vi.fn() };
-  const runtime = {
+  const adapter = {
     bootstrap: vi.fn(),
     dispose: vi.fn(),
     mountLayer: vi.fn(() => layerHandle),
@@ -16,21 +15,13 @@ const mocks = vi.hoisted(() => {
     unsafeNative: vi.fn(),
   };
   return {
-    handle,
     layerHandle,
-    runtime,
-    createCesiumViewer: vi.fn(() => handle),
-    createCesiumRuntime: vi.fn(() => runtime),
+    adapter,
   };
 });
 
-vi.mock('@cgx/adapter-cesium', () => ({
-  createViewer: mocks.createCesiumViewer,
-  createCesiumRuntime: mocks.createCesiumRuntime,
-}));
-
 const mockViewer = {
-  runtime: mocks.runtime,
+  adapter: mocks.adapter,
 } as unknown as CgxViewer;
 
 describe('LayerManager and Layers', () => {

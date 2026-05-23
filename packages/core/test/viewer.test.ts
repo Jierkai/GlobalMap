@@ -2,28 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { CgxError, ErrorCodes } from '../src/errors/CgxError.js';
 import type { Capability } from '../src/capability/Capability.js';
+import type { EngineAdapter } from '../src/adapter/EngineAdapter.js';
 
-const mocks = vi.hoisted(() => {
+function createMockAdapter(): EngineAdapter & { __nativeViewer: unknown } {
   const nativeViewer = { scene: {}, camera: {} };
-  const handle = { destroy: vi.fn() };
-  const runtime = {
+  return {
+    __nativeViewer: nativeViewer,
     bootstrap: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn().mockResolvedValue(undefined),
+    mountLayer: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn(), setVisible: vi.fn(), setOpacity: vi.fn(), setZIndex: vi.fn() })),
+    unmountLayer: vi.fn(),
+    mountFeature: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn(), flyTo: vi.fn().mockResolvedValue(undefined) })),
+    unmountFeature: vi.fn(),
+    mountWeatherEffect: vi.fn(() => ({ id: 'mock', dispose: vi.fn(), update: vi.fn() })),
+    unmountWeatherEffect: vi.fn(),
+    pickAt: vi.fn(() => null),
+    project: vi.fn(() => ({ x: 0, y: 0, z: 0 })),
+    unproject: vi.fn(() => ({ lng: 0, lat: 0, alt: 0 })),
     unsafeNative: vi.fn(() => nativeViewer),
   };
-  return {
-    nativeViewer,
-    handle,
-    runtime,
-    createCesiumViewer: vi.fn(() => handle),
-    createCesiumRuntime: vi.fn(() => runtime),
-  };
-});
-
-vi.mock('@cgx/adapter-cesium', () => ({
-  createViewer: mocks.createCesiumViewer,
-  createCesiumRuntime: mocks.createCesiumRuntime,
-}));
+}
 
 describe('CgxViewer', () => {
   beforeEach(() => {
@@ -31,9 +29,9 @@ describe('CgxViewer', () => {
   });
 
   it('should initialize and reach ready status', async () => {
+    const adapter = createMockAdapter();
     const viewer = new CgxViewer({
-      container: 'app',
-      cesium: { shouldAnimate: true },
+      adapter,
       scene: {
         center: { lng: 120, lat: 30 },
         resolutionScale: 1.25,
@@ -62,19 +60,19 @@ describe('CgxViewer', () => {
       ],
       layers: undefined,
     });
-    expect(mocks.createCesiumViewer).toHaveBeenCalledWith('app', { shouldAnimate: true });
 
     const onReady = vi.fn();
     viewer.on('ready', onReady);
 
     await viewer.ready();
     expect(viewer.status()).toBe('ready');
-    expect(mocks.runtime.bootstrap).toHaveBeenCalledWith(viewer.options);
+    expect(adapter.bootstrap).toHaveBeenCalledWith(viewer.options);
     expect(onReady).toHaveBeenCalledWith({ viewer });
   });
 
   it('should handle dispose idempotently', async () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
     await viewer.ready();
 
     const onDispose = vi.fn();
@@ -82,24 +80,24 @@ describe('CgxViewer', () => {
 
     await viewer.dispose();
     expect(viewer.status()).toBe('disposed');
-    expect(mocks.runtime.dispose).toHaveBeenCalledTimes(1);
-    expect(mocks.handle.destroy).toHaveBeenCalledTimes(1);
+    expect(adapter.dispose).toHaveBeenCalledTimes(1);
     expect(onDispose).toHaveBeenCalledWith({ viewer });
 
     await viewer.dispose();
-    expect(mocks.runtime.dispose).toHaveBeenCalledTimes(1);
-    expect(mocks.handle.destroy).toHaveBeenCalledTimes(1);
+    expect(adapter.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('should return the native Cesium viewer', () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
 
-    expect(viewer.getCesiumViewer()).toBe(mocks.nativeViewer);
-    expect(viewer.unsafeNative()).toBe(mocks.nativeViewer);
+    expect(viewer.getCesiumViewer()).toBe(adapter.__nativeViewer);
+    expect(viewer.unsafeNative()).toBe(adapter.__nativeViewer);
   });
 
   it('should inject capabilities and reject duplicates', async () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
 
     const mockCap: Capability<{ test: boolean }> = {
       id: 'mockCap',
@@ -120,7 +118,8 @@ describe('CgxViewer', () => {
   });
 
   it('should clean up capabilities on dispose', async () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
     const disposeFn = vi.fn();
     const mockCap: Capability<unknown> = {
       id: 'mockCap',
@@ -134,7 +133,8 @@ describe('CgxViewer', () => {
   });
 
   it('should notify uncaught handlers when event listeners throw', async () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
     const uncaught = vi.fn();
 
     viewer.onUncaught(uncaught);
@@ -148,7 +148,8 @@ describe('CgxViewer', () => {
   });
 
   it('should reject ready after dispose', async () => {
-    const viewer = new CgxViewer({ container: 'app' });
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
 
     await viewer.dispose();
 
@@ -159,25 +160,26 @@ describe('CgxViewer', () => {
 
   it('should validate malformed base options', () => {
     expect(() => new CgxViewer({
-      container: '',
+      adapter: undefined as any,
     })).toThrowError(CgxError);
 
+    const adapter = createMockAdapter();
     expect(() => new CgxViewer({
-      container: 'app',
+      adapter,
       scene: {
         center: { lng: Number.NaN, lat: 30 },
       },
     })).toThrowError(CgxError);
 
     expect(() => new CgxViewer({
-      container: 'app',
+      adapter,
       scene: {
         resolutionScale: 0,
       },
     })).toThrowError(CgxError);
 
     expect(() => new CgxViewer({
-      container: 'app',
+      adapter,
       basemaps: [
         {
           id: 'invalid-basemap',
@@ -189,8 +191,9 @@ describe('CgxViewer', () => {
   });
 
   it('should reject legacy nested options explicitly', () => {
+    const adapter = createMockAdapter();
     expect(() => new CgxViewer({
-      container: 'app',
+      adapter,
       ...( {
         options: {
           scene: {
