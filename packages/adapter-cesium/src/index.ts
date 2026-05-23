@@ -36,6 +36,9 @@
 // 导出 Viewer 创建函数
 export { createViewer } from './viewer';
 
+// 导出 CgxViewer 便捷工厂
+export { createCgxViewer, type CreateCgxViewerOptions } from './createCgxViewer';
+
 // 导出 EngineAdapter 工厂
 export { createCesiumAdapter, createCesiumRuntime, type CesiumEngineAdapterOptions } from './adapter';
 
