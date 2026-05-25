@@ -48,9 +48,6 @@ export class DataLayer extends BaseLayer {
   /** 附加选项 */
   readonly options: Record<string, unknown> | undefined;
 
-  /** @internal 挂载句柄 */
-  private _mountHandle: LayerHandle | void = undefined;
-
   /** @internal 响应式副作用清理函数 */
   private _effectDisposer: (() => void) | null = null;
 
@@ -81,11 +78,12 @@ export class DataLayer extends BaseLayer {
     return spec;
   }
 
-  protected mount(adapter: EngineAdapter): void {
-    this._mountHandle = adapter.mountLayer?.(this.buildSpec());
+  protected mount(adapter: EngineAdapter): LayerHandle | undefined {
+    this._handle = adapter.mountLayer?.(this.buildSpec());
     this._effectDisposer = effect(() => {
-      this._mountHandle?.update?.(this.buildSpec());
+      this._handle?.update?.(this.buildSpec());
     });
+    return this._handle;
   }
 
   protected async unmount(adapter: EngineAdapter): Promise<void> {
@@ -93,12 +91,9 @@ export class DataLayer extends BaseLayer {
       this._effectDisposer();
       this._effectDisposer = null;
     }
-    await adapter.unmountLayer?.(this._mountHandle);
-    this._mountHandle?.dispose?.();
-    this._mountHandle = undefined;
-  }
-
-  raw(): unknown {
-    return this._mountHandle ?? null;
+    const handle = this._handle;
+    this._handle = undefined;
+    await adapter.unmountLayer?.(handle);
+    handle?.dispose?.();
   }
 }

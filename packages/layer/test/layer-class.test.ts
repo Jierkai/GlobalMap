@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { EngineAdapter, FeatureRenderSpec, LayerRenderSpec, Updatable } from '@cgx/core';
+import type {
+  EngineAdapter,
+  FeatureHandle,
+  LayerHandle,
+} from '@cgx/core';
 import {
   ImageryLayer,
   TerrainLayer,
@@ -16,9 +20,28 @@ import { signal } from '@cgx/reactive';
 
 // ─── 测试辅助工具 ───
 
-function createMountHandle<T>(): Updatable<T> {
+function createLayerHandle(): LayerHandle {
   return {
+    id: crypto.randomUUID(),
     update: vi.fn(),
+    setVisible: vi.fn(),
+    setOpacity: vi.fn(),
+    setZIndex: vi.fn(),
+    unsafeNative: vi.fn(function () {
+      return this;
+    }),
+    dispose: vi.fn(),
+  };
+}
+
+function createFeatureHandle(): FeatureHandle {
+  return {
+    id: crypto.randomUUID(),
+    update: vi.fn(),
+    flyTo: vi.fn(async () => {}),
+    unsafeNative: vi.fn(function () {
+      return this;
+    }),
     dispose: vi.fn(),
   };
 }
@@ -33,18 +56,18 @@ function createMockProvider(url = 'https://example.com/{z}/{x}/{y}.png'): Imager
 }
 
 function createAdapter() {
-  const featureHandles: Array<Updatable<FeatureRenderSpec>> = [];
-  const layerHandles: Array<Updatable<LayerRenderSpec>> = [];
+  const featureHandles: FeatureHandle[] = [];
+  const layerHandles: LayerHandle[] = [];
 
   const adapter: EngineAdapter = {
     mountFeature: vi.fn(() => {
-      const handle = createMountHandle<FeatureRenderSpec>();
+      const handle = createFeatureHandle();
       featureHandles.push(handle);
       return handle;
     }),
     unmountFeature: vi.fn(),
     mountLayer: vi.fn(() => {
-      const handle = createMountHandle<LayerRenderSpec>();
+      const handle = createLayerHandle();
       layerHandles.push(handle);
       return handle;
     }),
@@ -613,10 +636,10 @@ describe('GraphicLayer class', () => {
   });
 
   it('falls back to per-feature mounting when layer channel unavailable', () => {
-    const featureHandles: Array<Updatable<FeatureRenderSpec>> = [];
+    const featureHandles: FeatureHandle[] = [];
     const adapter: EngineAdapter = {
       mountFeature: vi.fn(() => {
-        const handle = createMountHandle<FeatureRenderSpec>();
+        const handle = createFeatureHandle();
         featureHandles.push(handle);
         return handle;
       }),

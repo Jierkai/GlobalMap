@@ -98,9 +98,6 @@ export class GraphicLayer extends BaseLayer {
   /** @internal 引擎适配器引用 */
   private _adapterRef: EngineAdapter | null = null;
 
-  /** @internal 图层挂载句柄 */
-  private _layerMountHandle: LayerHandle | void = undefined;
-
   /** @internal 图层通道响应式副作用清理函数 */
   private _layerEffectDisposer: (() => void) | null = null;
 
@@ -129,8 +126,8 @@ export class GraphicLayer extends BaseLayer {
       this._unmountGraphic(prev);
     }
     this._graphics.set(graphic.id, graphic);
-    if (this._layerMountHandle) {
-      this._layerMountHandle.update?.(this.buildSpec());
+    if (this._handle) {
+      this._handle.update?.(this.buildSpec());
     } else {
       this._mountGraphic(graphic);
     }
@@ -216,9 +213,9 @@ export class GraphicLayer extends BaseLayer {
   removeGraphic(graphicOrId: Graphic | string): boolean {
     const graphic = this._getGraphic(graphicOrId);
     if (!graphic) return false;
-    if (!this._layerMountHandle) this._unmountGraphic(graphic);
+    if (!this._handle) this._unmountGraphic(graphic);
     const removed = this._graphics.delete(graphic.id);
-    if (removed && this._layerMountHandle) this._layerMountHandle.update?.(this.buildSpec());
+    if (removed && this._handle) this._handle.update?.(this.buildSpec());
     return removed;
   }
 
@@ -226,14 +223,14 @@ export class GraphicLayer extends BaseLayer {
    * 清除所有 Graphic
    */
   clear(): void {
-    if (!this._layerMountHandle) {
+    if (!this._handle) {
       for (const graphic of this._graphics.values()) {
         this._unmountGraphic(graphic);
       }
     }
     this._graphics.clear();
     this._mountedGraphicIds.clear();
-    this._layerMountHandle?.update?.(this.buildSpec());
+    this._handle?.update?.(this.buildSpec());
   }
 
   /**
@@ -298,14 +295,14 @@ export class GraphicLayer extends BaseLayer {
     return spec;
   }
 
-  protected mount(adapter: EngineAdapter): void {
+  protected mount(adapter: EngineAdapter): LayerHandle | undefined {
     this._adapterRef = adapter;
-    this._layerMountHandle = adapter.mountLayer?.(this.buildSpec());
-    if (this._layerMountHandle) {
+    this._handle = adapter.mountLayer?.(this.buildSpec());
+    if (this._handle) {
       this._layerEffectDisposer = effect(() => {
-        this._layerMountHandle?.update?.(this.buildSpec());
+        this._handle?.update?.(this.buildSpec());
       });
-      return;
+      return this._handle;
     }
 
     // 回退到逐要素挂载模式
@@ -314,6 +311,7 @@ export class GraphicLayer extends BaseLayer {
       this.visible();
       this._syncMountedGraphics();
     });
+    return undefined;
   }
 
   protected async unmount(adapter: EngineAdapter): Promise<void> {
@@ -321,10 +319,11 @@ export class GraphicLayer extends BaseLayer {
       this._layerEffectDisposer();
       this._layerEffectDisposer = null;
     }
-    if (this._layerMountHandle) {
-      adapter.unmountLayer?.(this._layerMountHandle);
-      this._layerMountHandle.dispose?.();
-      this._layerMountHandle = undefined;
+    if (this._handle) {
+      const handle = this._handle;
+      this._handle = undefined;
+      await adapter.unmountLayer?.(handle);
+      handle.dispose?.();
     }
     if (this._visibilityDisposer) {
       this._visibilityDisposer();
@@ -340,7 +339,7 @@ export class GraphicLayer extends BaseLayer {
   }
 
   raw(): unknown {
-    return this._layerMountHandle ?? Array.from(this._graphics.values()).map((g) => g.raw());
+    return this._handle ?? Array.from(this._graphics.values()).map((g) => g.raw());
   }
 
   // ─── 内部辅助方法 ───

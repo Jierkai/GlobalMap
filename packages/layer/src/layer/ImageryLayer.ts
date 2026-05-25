@@ -42,9 +42,6 @@ export class ImageryLayer extends BaseLayer {
   /** @internal 已解析的提供者 */
   private _resolvedProvider: ImageryProvider | null = null;
 
-  /** @internal 挂载句柄 */
-  private _mountHandle: LayerHandle | void = undefined;
-
   /** @internal 响应式副作用清理函数 */
   private _effectDisposer: (() => void) | null = null;
 
@@ -68,13 +65,14 @@ export class ImageryLayer extends BaseLayer {
     };
   }
 
-  protected async mount(adapter: EngineAdapter): Promise<void> {
+  protected async mount(adapter: EngineAdapter): Promise<LayerHandle | undefined> {
     if (!adapter) return;
     this._resolvedProvider = await this.provider;
-    this._mountHandle = adapter.mountLayer?.(this.buildSpec());
+    this._handle = adapter.mountLayer?.(this.buildSpec());
     this._effectDisposer = effect(() => {
-      this._mountHandle?.update?.(this.buildSpec());
+      this._handle?.update?.(this.buildSpec());
     });
+    return this._handle;
   }
 
   protected async unmount(adapter: EngineAdapter): Promise<void> {
@@ -82,12 +80,9 @@ export class ImageryLayer extends BaseLayer {
       this._effectDisposer();
       this._effectDisposer = null;
     }
-    await adapter.unmountLayer?.(this._mountHandle);
-    this._mountHandle?.dispose?.();
-    this._mountHandle = undefined;
-  }
-
-  raw(): unknown {
-    return this._mountHandle ?? null;
+    const handle = this._handle;
+    this._handle = undefined;
+    await adapter.unmountLayer?.(handle);
+    handle?.dispose?.();
   }
 }

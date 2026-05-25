@@ -1,5 +1,5 @@
 import { signal, type Signal } from '@cgx/reactive';
-import { TypedEmitter, type Off, type EngineAdapter, type LayerRenderSpec } from '@cgx/core';
+import { TypedEmitter, type Off, type EngineAdapter, type LayerHandle, type LayerRenderSpec } from '@cgx/core';
 
 /**
  * 图层类型枚举
@@ -86,6 +86,8 @@ export abstract class BaseLayer implements Layer {
 
   /** @internal 图层管理器引用 */
   protected _managerRef: LayerManagerRef | null = null;
+  /** @internal 引擎挂载句柄 */
+  protected _handle: LayerHandle | undefined = undefined;
 
   /**
    * 构造基类图层
@@ -144,7 +146,7 @@ export abstract class BaseLayer implements Layer {
    * @returns 已挂载时返回底层对象，否则返回 null
    */
   raw(): unknown {
-    return null;
+    return this._handle?.unsafeNative?.() ?? null;
   }
 
   // ─── 内部生命周期方法（供 LayerManager 调用） ───
@@ -161,7 +163,7 @@ export abstract class BaseLayer implements Layer {
    * @internal 挂载到引擎适配器
    * @param adapter - 引擎适配器实例
    */
-  _mount(adapter: EngineAdapter): void | Promise<void> {
+  _mount(adapter: EngineAdapter): LayerHandle | undefined | Promise<LayerHandle | undefined> {
     return this.mount(adapter);
   }
 
@@ -201,7 +203,9 @@ export abstract class BaseLayer implements Layer {
    *
    * @param adapter - 引擎适配器实例
    */
-  protected abstract mount(adapter: EngineAdapter): void | Promise<void>;
+  protected abstract mount(
+    adapter: EngineAdapter,
+  ): LayerHandle | undefined | Promise<LayerHandle | undefined>;
 
   /**
    * 从引擎适配器卸载的实现
