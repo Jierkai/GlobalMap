@@ -22,7 +22,7 @@ if command -v rg >/dev/null 2>&1; then
     fi
   }
 
-  check_absent "public packages import cesium" "from ['\"]cesium['\"]|import \\* as Cesium|import type \\* as Cesium" packages --glob '!packages/adapter-cesium/**' --glob '!**/dist/**' --glob '!**/coverage/**'
+  check_absent "public packages import cesium" "from ['\"]cesium['\"]|from ['\"]cesium/|^\\s*import ['\"]cesium['\"]|^\\s*import ['\"]cesium/|import \\* as Cesium|import type \\* as Cesium" packages --glob '!packages/adapter-cesium/**' --glob '!**/dist/**' --glob '!**/coverage/**'
   check_absent "public packages import @cgx/adapter-cesium" "@cgx/adapter-cesium" packages --glob '!packages/adapter-cesium/**' --glob '!**/dist/**' --glob '!**/coverage/**'
   check_absent "packages outside @cgx/reactive import alien-signals" "alien-signals" packages --glob '!packages/reactive/**' --glob '!**/dist/**' --glob '!**/coverage/**'
   check_absent "packages use @ts-nocheck" "@ts-nocheck" packages --glob '!**/dist/**' --glob '!**/coverage/**'
@@ -43,7 +43,7 @@ echo "→ stage-1: ensure no upper packages import 'cesium' directly"
 for pkg in core reactive feature layer sketch edit history analysis material provider-cn ui effect; do
   d="packages/$pkg/src"
   [ -d "$d" ] || continue
-  hits=$(grep -rEn "from[[:space:]]+['\"]cesium" "$d" 2>/dev/null || true)
+  hits=$(grep -rEn "from[[:space:]]+['\"]cesium['\"]|from[[:space:]]+['\"]cesium/|^[[:space:]]*import[[:space:]]+['\"]cesium['\"]|^[[:space:]]*import[[:space:]]+['\"]cesium/" "$d" 2>/dev/null || true)
   if [ -n "$hits" ]; then
     echo "✗ $pkg leaks cesium import:"
     echo "$hits"

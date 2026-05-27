@@ -75,6 +75,16 @@ export default tseslint.config(
             name: 'alien-signals',
             message: '只有 @cgx/reactive 可以直接依赖 alien-signals。'
           }
+        ],
+        patterns: [
+          {
+            group: ['cesium/*'],
+            message: 'Cesium 子路径仅允许在 packages/adapter-cesium 中 import。'
+          },
+          {
+            group: ['@cgx/adapter-cesium/*'],
+            message: '@cgx/adapter-cesium 不再暴露子路径；请通过主入口的 createCgxViewer 工厂使用。'
+          }
         ]
       }],
       'cgx-boundary/no-ts-nocheck': 'error'
@@ -95,6 +105,16 @@ export default tseslint.config(
           {
             name: '@cgx/adapter-cesium',
             message: '@cgx/reactive 不应依赖内部 Cesium adapter。'
+          }
+        ],
+        patterns: [
+          {
+            group: ['cesium/*'],
+            message: 'Cesium 子路径仅允许在 packages/adapter-cesium 中 import。'
+          },
+          {
+            group: ['@cgx/adapter-cesium/*'],
+            message: '@cgx/adapter-cesium 不再暴露子路径；请通过主入口的 createCgxViewer 工厂使用。'
           }
         ]
       }],
