@@ -7,7 +7,7 @@ import type {
   DataLayerRenderSpec,
   FeatureRenderSpec,
   GraphicLayerRenderSpec,
-  Updatable,
+  FeatureHandle,
 } from '@cgx/core';
 import type { CesiumViewerHandle } from '../types';
 import { LayerBridge } from '../layer';
@@ -179,7 +179,7 @@ export function createDataSourceLayerHandle(
 export function createGraphicLayerHandle(
   viewer: CesiumViewerHandle,
   spec: GraphicLayerRenderSpec,
-  mountFeature: (spec: FeatureRenderSpec) => Updatable<FeatureRenderSpec>,
+  mountFeature: (spec: FeatureRenderSpec) => FeatureHandle,
 ): LayerHandle {
   const mount = new GraphicLayerMount(viewer, spec, mountFeature);
   let current: GraphicLayerRenderSpec = spec;

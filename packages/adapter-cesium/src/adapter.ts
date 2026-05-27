@@ -694,7 +694,7 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): C
    * - Entity 模式（默认）：使用 FeatureEntity
    *
    * @param spec - 要素渲染规格
-   * @returns {Updatable<FeatureRenderSpec>} 要素句柄，支持更新和销毁
+   * @returns {FeatureHandle} 要素句柄，支持更新和销毁
    */
   const mountFeatureSpec = (spec: FeatureRenderSpec): FeatureHandle => {
     const viewerHandle = ensureHandle();

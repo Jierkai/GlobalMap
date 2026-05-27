@@ -6,7 +6,8 @@ import type {
   GraphicRenderMode,
   LabelRenderSpec,
   LayerRenderSpec,
-  Updatable,
+  FeatureHandle,
+  UpdatableHandle,
 } from '@cgx/core';
 import { EntityBase } from '../entity';
 import { PickingBridge } from '../picking';
@@ -419,9 +420,10 @@ export class PrimitiveFeatureBatch {
  * - 同步要素的增删改操作
  * - 管理 Entity 和 Primitive 批量管理器的生命周期
  */
-export class GraphicLayerMount implements Updatable<LayerRenderSpec> {
+export class GraphicLayerMount implements UpdatableHandle<Partial<LayerRenderSpec>> {
+  readonly id: string;
   /** Entity 模式渲染的要素句柄映射 */
-  private readonly entityHandles = new Map<string, Updatable<FeatureRenderSpec>>();
+  private readonly entityHandles = new Map<string, FeatureHandle>();
   /** Primitive 模式渲染的批量管理器 */
   private readonly primitiveBatch: PrimitiveFeatureBatch;
   /** 是否已销毁 */
@@ -439,8 +441,9 @@ export class GraphicLayerMount implements Updatable<LayerRenderSpec> {
   constructor(
     private readonly viewer: CesiumViewerHandle,
     spec: GraphicLayerRenderSpec,
-    private readonly mountFeature: (spec: FeatureRenderSpec) => Updatable<FeatureRenderSpec>,
+    private readonly mountFeature: (spec: FeatureRenderSpec) => FeatureHandle,
   ) {
+    this.id = spec.id;
     this.current = spec;
     this.primitiveBatch = new PrimitiveFeatureBatch(viewer, spec.id);
     this.sync(spec);
@@ -451,7 +454,7 @@ export class GraphicLayerMount implements Updatable<LayerRenderSpec> {
    *
    * @param next - 新的图层渲染规格
    */
-  update(next: LayerRenderSpec): void {
+  update(next: Partial<LayerRenderSpec>): void {
     if (next.kind !== 'graphic' || this.disposed) return;
     this.current = next as GraphicLayerRenderSpec;
     this.sync(this.current);
