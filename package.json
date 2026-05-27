@@ -12,7 +12,8 @@
     "build:example": "pnpm --filter @cgx/example-sandcastle build",
     "compliance:scan": "bash scripts/compliance-scan.sh",
     "architecture:scan": "bash scripts/architecture-scan.sh",
-    "architecture:scan:dts": "pnpm build && bash scripts/architecture-dts-scan.sh"
+    "architecture:scan:dts": "pnpm build && bash scripts/architecture-dts-scan.sh",
+    "escape-hatch:audit": "bash scripts/escape-hatch-audit.sh"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
