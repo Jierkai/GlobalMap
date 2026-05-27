@@ -6,7 +6,6 @@ import type {
 
 export type {
   Disposable,
-  Updatable,
   ScreenPoint,
   LngLat,
   CartesianPoint3D,

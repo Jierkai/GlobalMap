@@ -1,3 +1,11 @@
+/**
+ * @internal
+ * 仅供 packages/adapter-cesium/src/handles/* 内部使用，不属于公开 API。
+ * Stage 3 后此模块的 exports 已不再从 package.json exports 暴露
+ * （见 packages/adapter-cesium/package.json，仅保留 '.' 主入口），
+ * 也不再从 src/index.ts 主入口 re-export。
+ */
+
 import * as Cesium from 'cesium';
 import { CesiumViewerHandle } from './types';
 import { _getInternalViewer } from './viewer';

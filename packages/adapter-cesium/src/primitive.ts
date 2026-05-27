@@ -11,6 +11,7 @@
  * - 销毁和资源释放
  * 
  * 子类只需实现 `_createPrimitive()` 方法即可获得完整的生命周期管理。
+ * @internal
  */
 
 import * as Cesium from 'cesium';

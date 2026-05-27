@@ -14,17 +14,12 @@
 import * as Cesium from 'cesium';
 import type {
   BasemapSpec,
-  BingBasemapSpec,
   PresetBasemapSpec,
-  DataLayerRenderSpec,
-  EngineAdapter,
   FeatureRenderSpec,
-  GraphicLayerRenderSpec,
   GraphicRenderMode,
   LabelRenderSpec,
   LngLat,
   LayerRenderSpec,
-  ModelFeatureRenderSpec,
   ScreenPoint,
   CgxViewerRuntimeOptions as CoreViewerOptions,
   TerrainOptions as CoreTerrainOptions,
@@ -32,7 +27,6 @@ import type {
   CesiumRuntime,
 } from './types';
 import { toCartesian3 } from './coord';
-import { LayerBridge } from './layer';
 import { resolveProvider } from './handles/_provider';
 import {
   createImageryLayerHandle,
