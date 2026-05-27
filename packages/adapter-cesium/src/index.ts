@@ -1,63 +1,54 @@
 /**
  * @fileoverview Cesium 适配器模块入口
- * 导出 Cesium 适配器的所有公共 API
- * 
+ *
  * @module adapter-cesium
  * @description
- * 该模块是 Cesium 适配器的主入口点，提供了以下功能：
- * 
- * - **Viewer 创建**: createViewer - 创建 Cesium Viewer 实例的工厂函数
- * - **坐标转换**: toCartesian3, fromCartesian3 - 经纬度与笛卡尔坐标的转换
- * - **事件处理**: ScreenSpaceEmitter - 屏幕空间事件发射器
- * - **逃生舱口**: unsafeGetCesium, unsafeGetNativeViewer - 直接访问 Cesium 原生 API
- * - **类型定义**: 导出所有类型定义
- * 
- * @example
- * ```typescript
- * import { createViewer, toCartesian3, ScreenSpaceEmitter } from '@cgx/adapter-cesium';
- * 
- * // 创建 Viewer
- * const viewer = createViewer('cesiumContainer', {
- *   animation: true,
- *   shouldAnimate: true
- * });
- * 
- * // 坐标转换
- * const cartesian3 = toCartesian3({ lng: 116.3974, lat: 39.9093, alt: 100 });
- * 
- * // 事件处理
- * const emitter = new ScreenSpaceEmitter(viewer.scene, canvas);
- * emitter.on('click', (payload) => {
- *   console.log('点击位置:', payload.position);
- * });
- * ```
+ * 该模块是 Cesium 适配器的主入口点。Stage 3 boundary lockdown 之后，
+ * 入口仅暴露以下 API：
+ *
+ * - **Viewer 创建**: createViewer / createCgxViewer
+ * - **EngineAdapter 工厂**: createCesiumAdapter / createCesiumRuntime
+ * - **坐标工具**: LngLatPosition / toCartesian3 / fromCartesian3
+ * - **屏幕事件**: ScreenSpaceEmitter
+ * - **逃生舱口**: unsafeGetCesium / unsafeGetNativeViewer
+ *
+ * 内部 helper（provider/layer/primitive/entity/material/picking 的具体实现）
+ * 已不再从主入口透传；如确需访问 Cesium 原生 API 请走 unsafeGetCesium /
+ * unsafeGetNativeViewer 逃生舱口。
  */
 
-// 导出 Viewer 创建函数
 export { createViewer } from './viewer';
-
-// 导出 CgxViewer 便捷工厂
 export { createCgxViewer, type CreateCgxViewerOptions } from './createCgxViewer';
 
-// 导出 EngineAdapter 工厂
-export { createCesiumAdapter, createCesiumRuntime, type CesiumEngineAdapterOptions } from './adapter';
+export {
+  createCesiumAdapter,
+  createCesiumRuntime,
+  type CesiumEngineAdapterOptions,
+} from './adapter';
 
-// 导出逃生舱口函数（谨慎使用）
 export { unsafeGetCesium, unsafeGetNativeViewer } from './escape-hatch';
 
-// 导出坐标转换工具函数
-export { LngLatPosition, toCartesian3, fromCartesian3, type LngLatPositionInput } from './coord';
+export {
+  LngLatPosition,
+  toCartesian3,
+  fromCartesian3,
+  type LngLatPositionInput,
+} from './coord';
 
-// 导出屏幕空间事件发射器
 export { ScreenSpaceEmitter } from './event';
 
-// 导出 Phase 2 模块
-export * from './provider';
-export * from './layer';
-export * from './primitive';
-export * from './entity';
-export * from './material';
-export * from './picking';
+// Cesium-specific Opaque 与 viewer/runtime 类型（用户写自定义 adapter 时需要）。
+export type {
+  CesiumViewerOptions,
+  CesiumViewerHandle,
+  CgxViewerRuntimeOptions,
+  CesiumRuntime,
+  Opaque,
+  NativeScene,
+  NativeCamera,
+  NativeClock,
+  NativeImageryLayerCollection,
+  NativeTerrainProvider,
+  NativeCartesian3,
+} from './types';
 
-// 导出所有类型定义
-export * from './types';
