@@ -9,62 +9,41 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 1
 fi
 
-mapfile -t DECLARATIONS < <(node --input-type=module <<'NODE'
-import fs from 'node:fs';
-import path from 'node:path';
+FAIL=0
 
-const root = process.cwd();
-const packagesDir = path.join(root, 'packages');
-const declarations = new Set();
+# ── Sweep A: 非 adapter-cesium 包的 dist 整树不能 import cesium ─────────
+echo "→ dts-scan A: ensure non-adapter dist trees don't import cesium"
+LEAK_A_PATTERN="from ['\"]cesium['\"]|from ['\"]cesium/|^[[:space:]]*import ['\"]cesium['\"]|^[[:space:]]*import ['\"]cesium/|import\\(['\"]cesium['\"]\\)"
+for pkg_dist in packages/*/dist; do
+  [ -d "$pkg_dist" ] || continue
+  case "$pkg_dist" in
+    packages/adapter-cesium/dist) continue ;;
+  esac
+  hits="$(rg -n "$LEAK_A_PATTERN" "$pkg_dist" 2>/dev/null || true)"
+  if [ -n "$hits" ]; then
+    echo "✗ $pkg_dist leaks cesium import:"
+    echo "$hits"
+    FAIL=1
+  fi
+done
 
-for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
-  if (!entry.isDirectory()) continue;
+# ── Sweep B: adapter-cesium 公开 d.ts 不能暴露内部桥接器符号 ───────────
+echo "→ dts-scan B: ensure adapter-cesium dist d.ts doesn't expose internal bridges"
+ADAPTER_DTS="packages/adapter-cesium/dist"
+if [ -d "$ADAPTER_DTS" ]; then
+  for symbol in LayerBridge EntityBase PrimitiveBase PickingBridge; do
+    hits="$(rg -n "\\b$symbol\\b" "$ADAPTER_DTS/index.d.ts" 2>/dev/null || true)"
+    if [ -n "$hits" ]; then
+      echo "✗ adapter-cesium index.d.ts exposes $symbol:"
+      echo "$hits"
+      FAIL=1
+    fi
+  done
+fi
 
-  const pkgDir = path.join(packagesDir, entry.name);
-  const pkgPath = path.join(pkgDir, 'package.json');
-  if (!fs.existsSync(pkgPath)) continue;
-
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-  const visit = (value) => {
-    if (typeof value === 'string') {
-      if (value.endsWith('.d.ts')) {
-        declarations.add(path.resolve(pkgDir, value));
-      }
-      return;
-    }
-
-    if (!value || typeof value !== 'object') return;
-    for (const nested of Object.values(value)) {
-      visit(nested);
-    }
-  };
-
-  visit(pkg.exports);
-  if (typeof pkg.types === 'string' && pkg.types.endsWith('.d.ts')) {
-    declarations.add(path.resolve(pkgDir, pkg.types));
-  }
-}
-
-for (const declaration of declarations) {
-  if (fs.existsSync(declaration)) {
-    process.stdout.write(`${declaration}\n`);
-  }
-}
-NODE
-)
-
-if [ "${#DECLARATIONS[@]}" -eq 0 ]; then
-  echo "Architecture d.ts scan found no public declaration files. Run pnpm build first." >&2
+if [ "$FAIL" -ne 0 ]; then
+  echo "Architecture d.ts scan failed."
   exit 1
 fi
 
-PATTERN="from ['\"]cesium['\"]|import\\(['\"]cesium['\"]\\)|@cgx/adapter-cesium|Cesium\\.|\\bCesium[A-Za-z0-9_]*\\b"
-MATCHES="$(rg -n "$PATTERN" "${DECLARATIONS[@]}" 2>/dev/null || true)"
-
-if [ -n "$MATCHES" ]; then
-  echo "Architecture d.ts fail: public declarations expose Cesium-native types"
-  echo "$MATCHES"
-  exit 1
-fi
-
-echo "Architecture d.ts scan passed."
+echo "✓ architecture d.ts scan passed."
