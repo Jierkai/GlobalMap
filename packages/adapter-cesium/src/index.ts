@@ -51,4 +51,3 @@ export type {
   NativeTerrainProvider,
   NativeCartesian3,
 } from './types';
-
