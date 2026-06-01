@@ -1,4 +1,3 @@
-import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 const publicPackageFiles = [
@@ -52,8 +51,13 @@ export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/node_modules/**', '**/legacy/**', '**/test-report/**', '**/coverage/**']
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      sourceType: 'module'
+    }
+  },
   {
     files: publicPackageFiles,
     ignores: ['packages/adapter-cesium/**', 'packages/reactive/**'],
