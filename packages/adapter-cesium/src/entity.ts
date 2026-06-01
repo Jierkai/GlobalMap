@@ -19,13 +19,13 @@ export interface EntityLifecycleOptions {
 }
 
 /**
- * 实体基类
+ * 实体生命周期 helper
  *
  * @description
  * 提供 Cesium `Entity` 的通用生命周期管理和配置更新能力。
  * 子类只需要实现 `_createEntityOptions()`，并可按需覆写事件钩子。
  */
-export abstract class EntityBase<
+export abstract class EntityLifecycle<
   TOptions extends Cesium.Entity.ConstructorOptions = Cesium.Entity.ConstructorOptions,
   TEntity extends Cesium.Entity = Cesium.Entity,
 > {

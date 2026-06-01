@@ -39,7 +39,7 @@ import {
   createBatchedPrimitiveFeatureHandle,
   createWeatherEffectHandle,
 } from './handles';
-import { PickingBridge } from './picking';
+import { pickSceneFeature } from './picking';
 import type { CesiumViewerHandle, CesiumViewerOptions } from './types';
 import type { LayerHandle, FeatureHandle } from '@cgx/core';
 import { createViewer, _getInternalViewer } from './viewer';
@@ -812,7 +812,7 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): C
       handleToUnmount?.dispose();
     },
     pickAt(point: ScreenPoint) {
-      return PickingBridge.pick(ensureHandle(), point as unknown as Cesium.Cartesian2) as any;
+      return pickSceneFeature(ensureHandle(), point as unknown as Cesium.Cartesian2) as any;
     },
     project(position: LngLat) {
       return toCartesian3(position) as unknown as { x: number; y: number; z?: number };

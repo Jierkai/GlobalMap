@@ -9,9 +9,9 @@ import type {
   FeatureHandle,
   UpdatableHandle,
 } from '@cgx/core';
-import { EntityBase } from '../entity';
-import { PickingBridge } from '../picking';
-import { PrimitiveBase } from '../primitive';
+import { EntityLifecycle } from '../entity';
+import { bindPickFeature, unbindPickFeature } from '../picking';
+import { PrimitiveLifecycle } from '../primitive';
 import type { CesiumViewerHandle } from '../types';
 import { _getInternalViewer } from '../viewer';
 import {
@@ -37,10 +37,10 @@ import {
  * 要素实体类
  *
  * @description
- * 继承自 EntityBase，将 FeatureRenderSpec 转换为 Cesium Entity。
+ * 继承自内部实体生命周期 helper，将 FeatureRenderSpec 转换为 Cesium Entity。
  * 负责管理单个要素的 Entity 生命周期和拾取绑定。
  */
-export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
+export class FeatureEntity extends EntityLifecycle<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
   /** 要素渲染规格 */
   private spec: FeatureRenderSpec;
 
@@ -63,7 +63,7 @@ export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, 
   updateSpec(spec: FeatureRenderSpec): void {
     this.spec = spec;
     this.update(buildEntityOptions(spec));
-    if (this.entity) PickingBridge.setFeature(this.entity, spec);
+    if (this.entity) bindPickFeature(this.entity, spec);
   }
 
   /**
@@ -82,7 +82,7 @@ export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, 
    * @param entity - 挂载的 Entity 实例
    */
   protected _onAttach(_viewer: Cesium.Viewer, entity: Cesium.Entity): void {
-    PickingBridge.setFeature(entity, this.spec);
+    bindPickFeature(entity, this.spec);
   }
 
   /**
@@ -92,7 +92,7 @@ export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, 
    * @param entity - 卸载的 Entity 实例
    */
   protected _onDetach(_viewer: Cesium.Viewer, entity: Cesium.Entity): void {
-    PickingBridge.removeFeature(entity);
+    unbindPickFeature(entity);
   }
 }
 
@@ -100,10 +100,10 @@ export class FeatureEntity extends EntityBase<Cesium.Entity.ConstructorOptions, 
  * 模型原语类
  *
  * @description
- * 继承自 PrimitiveBase，将 ModelFeatureRenderSpec 转换为 Cesium Primitive。
+ * 继承自内部原语生命周期 helper，将 ModelFeatureRenderSpec 转换为 Cesium Primitive。
  * 用于以 Primitive 模式渲染 3D 模型要素。
  */
-export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
+export class ModelPrimitive extends PrimitiveLifecycle<Cesium.Primitive> {
   /** 模型要素渲染规格 */
   private spec: ModelFeatureRenderSpec;
 
@@ -130,7 +130,7 @@ export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
     primitive.position = toCesiumPosition(spec.position);
     primitive.model = spec.model;
     primitive.show = spec.model?.show ?? true;
-    PickingBridge.setFeature(primitive, spec);
+    bindPickFeature(primitive, spec);
   }
 
   /**
@@ -153,7 +153,7 @@ export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
    * @param primitive - 挂载的 Primitive 实例
    */
   protected _onAttach(_viewer: Cesium.Viewer, primitive: Cesium.Primitive): void {
-    PickingBridge.setFeature(primitive, this.spec);
+    bindPickFeature(primitive, this.spec);
   }
 
   /**
@@ -163,7 +163,7 @@ export class ModelPrimitive extends PrimitiveBase<Cesium.Primitive> {
    * @param primitive - 卸载的 Primitive 实例
    */
   protected _onDetach(_viewer: Cesium.Viewer, primitive: Cesium.Primitive): void {
-    PickingBridge.removeFeature(primitive);
+    unbindPickFeature(primitive);
   }
 }
 
@@ -287,7 +287,7 @@ export class PrimitiveFeatureBatch {
    */
   private clearCollection(collection: PrimitiveBatchCollection): void {
     for (const itemId of collection.itemIds) {
-      PickingBridge.removeFeature(itemId);
+      unbindPickFeature(itemId);
     }
     collection.itemIds = [];
 
@@ -316,11 +316,11 @@ export class PrimitiveFeatureBatch {
       ? collection.primitive.add(options)
       : this.addFallbackItem(collection.primitive, options);
 
-    PickingBridge.setFeature(spec.id, spec);
+    bindPickFeature(spec.id, spec);
     collection.itemIds.push(spec.id);
 
     if (item && (typeof item === 'object' || typeof item === 'function')) {
-      PickingBridge.setFeature(item, spec);
+      bindPickFeature(item, spec);
       collection.itemIds.push(item);
     }
   }

@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import * as Cesium from 'cesium';
 import { createViewer } from '../src/viewer';
-import { PrimitiveBase } from '../src/primitive';
-import { EntityBase } from '../src/entity';
+import { PrimitiveLifecycle } from '../src/primitive';
+import { EntityLifecycle } from '../src/entity';
 
-class TestPrimitive extends PrimitiveBase<Cesium.Primitive> {
+class TestPrimitive extends PrimitiveLifecycle<Cesium.Primitive> {
   protected _createPrimitive(): Cesium.Primitive {
     return new Cesium.Primitive({ id: 'primitive-id' });
   }
 }
 
-class TestEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
+class TestEntity extends EntityLifecycle<Cesium.Entity.ConstructorOptions, Cesium.Entity> {
   protected _createEntityOptions(): Cesium.Entity.ConstructorOptions {
     return {
       id: 'entity-id',
@@ -19,7 +19,7 @@ class TestEntity extends EntityBase<Cesium.Entity.ConstructorOptions, Cesium.Ent
   }
 }
 
-describe('PrimitiveBase', () => {
+describe('PrimitiveLifecycle', () => {
   it('should init, attach, detach, and dispose a primitive', async () => {
     const handle = createViewer('test-container');
     const primitive = new TestPrimitive(handle, { autoAttach: false });
@@ -40,7 +40,7 @@ describe('PrimitiveBase', () => {
   });
 });
 
-describe('EntityBase', () => {
+describe('EntityLifecycle', () => {
   it('should init, attach, update, detach, and dispose an entity', async () => {
     const handle = createViewer('test-container');
     const entity = new TestEntity(handle, { autoAttach: false });

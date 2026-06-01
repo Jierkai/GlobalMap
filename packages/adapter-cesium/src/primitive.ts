@@ -27,7 +27,7 @@ export interface PrimitiveLifecycleOptions {
 }
 
 /**
- * 原语基类
+ * 原语生命周期 helper
  *
  * @description
  * 提供 Cesium `Primitive` 的通用生命周期管理：
@@ -37,7 +37,7 @@ export interface PrimitiveLifecycleOptions {
  * 
  * @typeParam TPrimitive - Cesium Primitive 的具体类型
  */
-export abstract class PrimitiveBase<TPrimitive extends Cesium.Primitive = Cesium.Primitive> {
+export abstract class PrimitiveLifecycle<TPrimitive extends Cesium.Primitive = Cesium.Primitive> {
   /** 当前原语实例，未初始化时为 null */
   private _primitive: TPrimitive | null = null;
   /** 是否已挂载到场景 */
