@@ -10,7 +10,16 @@ import type {
   FeatureHandle,
 } from '@cgx/core';
 import type { CesiumViewerHandle } from '../types';
-import { LayerBridge } from '../layer';
+import {
+  bridgeAdd3DTileset,
+  bridgeAddDataSource,
+  bridgeAddImageryLayer,
+  bridgeRemove3DTileset,
+  bridgeRemoveDataSource,
+  bridgeRemoveImageryLayer,
+  bridgeRemoveTerrainProvider,
+  bridgeSetTerrainProvider,
+} from '../layer';
 import { resolveProvider } from './_provider';
 import { GraphicLayerMount } from '../adapter';
 
@@ -18,7 +27,7 @@ export function createImageryLayerHandle(
   viewer: CesiumViewerHandle,
   spec: ImageryLayerRenderSpec,
 ): LayerHandle {
-  const cesiumLayer = LayerBridge.addImageryLayer(
+  const cesiumLayer = bridgeAddImageryLayer(
     viewer,
     resolveProvider(spec.provider) as Cesium.ImageryProvider | Promise<Cesium.ImageryProvider>,
   );
@@ -40,7 +49,7 @@ export function createImageryLayerHandle(
     },
     unsafeNative: () => cesiumLayer ?? null,
     dispose() {
-      if (cesiumLayer) LayerBridge.removeImageryLayer(viewer, cesiumLayer);
+      if (cesiumLayer) bridgeRemoveImageryLayer(viewer, cesiumLayer);
     },
   };
 }
@@ -49,7 +58,7 @@ export function createTerrainLayerHandle(
   viewer: CesiumViewerHandle,
   spec: TerrainLayerRenderSpec,
 ): LayerHandle {
-  LayerBridge.setTerrainProvider(viewer, resolveProvider(spec.provider) as Cesium.TerrainProvider);
+  bridgeSetTerrainProvider(viewer, resolveProvider(spec.provider) as Cesium.TerrainProvider);
 
   return {
     id: spec.id,
@@ -59,7 +68,7 @@ export function createTerrainLayerHandle(
     setZIndex() { /* same */ },
     unsafeNative: () => null,
     dispose() {
-      LayerBridge.removeTerrainProvider(viewer);
+      bridgeRemoveTerrainProvider(viewer);
     },
   };
 }
@@ -91,9 +100,9 @@ export function createTilesetLayerHandle(
     const payload = payloadRecord(next.payload);
     const url = payload.url;
     if (typeof url !== 'string') return;
-    const mounted = await LayerBridge.add3DTileset(viewer, url, next.options);
+    const mounted = await bridgeAdd3DTileset(viewer, url, next.options);
     if (disposed || current !== next || version !== loadVersion) {
-      if (mounted) LayerBridge.remove3DTileset(viewer, mounted);
+      if (mounted) bridgeRemove3DTileset(viewer, mounted);
       return;
     }
     raw = mounted;
@@ -118,7 +127,7 @@ export function createTilesetLayerHandle(
       disposed = true;
       loadVersion += 1;
       if (raw) {
-        LayerBridge.remove3DTileset(viewer, raw);
+        bridgeRemove3DTileset(viewer, raw);
         raw = undefined;
       }
     },
@@ -140,9 +149,9 @@ export function createDataSourceLayerHandle(
     if (typeof load !== 'function') return;
     const dataSource = await load(next.payload, next.options);
     if (disposed || current !== next) return;
-    const mounted = await LayerBridge.addDataSource(viewer, dataSource);
+    const mounted = await bridgeAddDataSource(viewer, dataSource);
     if (disposed || current !== next || version !== loadVersion) {
-      if (mounted) LayerBridge.removeDataSource(viewer, mounted);
+      if (mounted) bridgeRemoveDataSource(viewer, mounted);
       return;
     }
     raw = mounted;
@@ -169,7 +178,7 @@ export function createDataSourceLayerHandle(
       disposed = true;
       loadVersion += 1;
       if (raw) {
-        LayerBridge.removeDataSource(viewer, raw);
+        bridgeRemoveDataSource(viewer, raw);
         raw = undefined;
       }
     },
