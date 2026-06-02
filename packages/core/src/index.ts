@@ -24,6 +24,7 @@ export {
 
 export { type Capability, CameraOps, ClockOps, InputOps } from './capability/Capability.js';
 export { createVitalsHud, type VitalsHud, type VitalsConfig } from './vitals/VitalsHud.js';
+export { metricsBus, type MetricsHandler } from './vitals/MetricsBus.js';
 export { CgxError, ErrorCodes } from './errors/CgxError.js';
 export { TypedEmitter, type Emitter, type Off } from './typed-events/Emitter.js';
 export {

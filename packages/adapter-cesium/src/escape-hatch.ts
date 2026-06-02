@@ -12,6 +12,7 @@
  */
 
 import * as Cesium from 'cesium';
+import { metricsBus } from '@cgx/core';
 import type { CesiumViewerHandle } from './types';
 import { _getInternalViewer } from './viewer';
 
@@ -33,6 +34,7 @@ import { _getInternalViewer } from './viewer';
  * ```
  */
 export function unsafeGetCesium(): typeof import('cesium') {
+  metricsBus.record('escapeHatchCallCount');
   return Cesium;
 }
 
@@ -55,5 +57,6 @@ export function unsafeGetCesium(): typeof import('cesium') {
  * ```
  */
 export function unsafeGetNativeViewer(handle: CesiumViewerHandle): unknown {
+  metricsBus.record('escapeHatchCallCount');
   return _getInternalViewer(handle);
 }
