@@ -27,6 +27,8 @@ export interface EntityPoolOptions<TEntity> {
  * 设置环境变量 `CGX_DISABLE_POOL=1` 可完全禁用池化（便于对比测试）。
  */
 export class EntityPool<TEntity> {
+  private static readonly kinds: readonly PoolableKind[] = ['point', 'polyline', 'billboard'];
+
   private readonly free = new Map<PoolableKind, TEntity[]>();
   private readonly capacity: number;
   private acquires = 0;
@@ -103,13 +105,20 @@ export class EntityPool<TEntity> {
    * 返回当前池状态的只读快照，包含总 acquire 次数、命中次数、命中率及各桶大小。
    */
   snapshot() {
+    const bucketSizes: Record<PoolableKind, number> = {
+      point: 0,
+      polyline: 0,
+      billboard: 0,
+    };
+    for (const kind of EntityPool.kinds) {
+      bucketSizes[kind] = this.free.get(kind)?.length ?? 0;
+    }
+
     return {
       acquires: this.acquires,
       hits: this.hits,
       hitRate: this.acquires > 0 ? this.hits / this.acquires : 0,
-      bucketSizes: Object.fromEntries(
-        [...this.free.entries()].map(([k, v]) => [k, v.length]),
-      ),
+      bucketSizes,
     };
   }
 

@@ -35,6 +35,7 @@ import {
   createDataSourceLayerHandle,
   createGraphicLayerHandle,
   createEntityFeatureHandle,
+  flushEntityPools,
   createPrimitiveFeatureHandle,
   createBatchedPrimitiveFeatureHandle,
   createWeatherEffectHandle,
@@ -785,6 +786,7 @@ export function createCesiumAdapter(options: CesiumEngineAdapterOptions = {}): C
       }
       disposeMountedEntries(mountedBasemaps);
       disposeMountedEntries(mountedLayers);
+      if (handle) flushEntityPools(handle);
       if (ownsHandle) handle?.destroy();
       handle = undefined;
       ownsHandle = false;
