@@ -37,6 +37,8 @@ export {
 
 export { ScreenSpaceEmitter } from './event';
 
+export * as __test__ from './__test__';
+
 // Cesium-specific Opaque 与 viewer/runtime 类型（用户写自定义 adapter 时需要）。
 export type {
   CesiumViewerOptions,

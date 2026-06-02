@@ -56,6 +56,56 @@ describe('UpdateBatcher', () => {
     expect(apply).toHaveBeenCalledTimes(2);
   });
 
+  it('can toggle batching at runtime', () => {
+    const apply = vi.fn();
+    const b = new UpdateBatcher();
+
+    b.setEnabled(false);
+    b.enqueue('h1', { a: 1 }, apply);
+    b.enqueue('h1', { b: 2 }, apply);
+
+    expect(apply).toHaveBeenCalledTimes(2);
+
+    b.setEnabled(true);
+    b.enqueue('h1', { c: 3 }, apply);
+
+    expect(apply).toHaveBeenCalledTimes(2);
+
+    b.flush();
+
+    expect(apply).toHaveBeenCalledTimes(3);
+    expect(apply).toHaveBeenLastCalledWith({ c: 3 });
+  });
+
+  it('reports and resets per-frame patch and native-write metrics', () => {
+    const apply = vi.fn();
+    const b = new UpdateBatcher();
+
+    b.enqueue('h1', { a: 1 }, apply);
+    b.enqueue('h1', { b: 2 }, apply);
+    b.enqueue('h2', { c: 3 }, apply);
+
+    expect(b.snapshot()).toEqual({
+      framePatchCount: 3,
+      frameNativeWriteCount: 0,
+    });
+
+    b.flush();
+
+    expect(apply).toHaveBeenCalledTimes(2);
+    expect(b.snapshot()).toEqual({
+      framePatchCount: 3,
+      frameNativeWriteCount: 2,
+    });
+
+    b.resetMetrics();
+
+    expect(b.snapshot()).toEqual({
+      framePatchCount: 0,
+      frameNativeWriteCount: 0,
+    });
+  });
+
   it('注入手动调度器时，入队不立即 apply；运行捕获的回调后 apply 被调用一次并携带合并补丁', () => {
     let captured: (() => void) | null = null;
     const scheduler = vi.fn((cb: () => void) => {

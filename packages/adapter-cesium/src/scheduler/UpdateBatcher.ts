@@ -26,7 +26,7 @@ interface QueueEntry<T> { patch: T; apply: ApplyFn<T>; }
  * - `new UpdateBatcher({ enabled: false })`：完全禁用批处理，每次入队即写入。
  */
 export class UpdateBatcher {
-  private readonly enabled: boolean;
+  private enabled: boolean;
   private readonly scheduler: (cb: () => void) => number;
   private queue = new Map<string, QueueEntry<any>>();
   private rafHandle: number | null = null;
@@ -97,6 +97,19 @@ export class UpdateBatcher {
   resetMetrics(): void {
     this.patchCount = 0;
     this.writeCount = 0;
+    metricsBus.set('framePatchCount', this.patchCount);
+    metricsBus.set('frameNativeWriteCount', this.writeCount);
+  }
+
+  /**
+   * 运行时启用或禁用批处理。
+   * 禁用时先冲刷已排队补丁，避免已有异步写入滞留到后续帧。
+   */
+  setEnabled(enabled: boolean): void {
+    if (!enabled && this.enabled && this.queue.size > 0) {
+      this.flush();
+    }
+    this.enabled = enabled;
   }
 
   /** 若尚无待处理的 RAF 请求，则向调度器注册一次冲刷回调。 */
