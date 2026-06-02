@@ -67,6 +67,20 @@ export function toCartesian3(lngLat: LngLat): NativeCartesian3 {
 }
 
 /**
+ * 零分配坐标转换：把经纬度写入既有的 Cartesian3，避免每次 new。
+ * 热路径应把 out 提到外层循环复用。
+ */
+export function toCartesian3Into(
+  out: Cesium.Cartesian3,
+  lng: number,
+  lat: number,
+  alt = 0,
+): Cesium.Cartesian3 {
+  // Cesium.Cartesian3.fromDegrees 第 5 个参数 result 即为复用目标
+  return Cesium.Cartesian3.fromDegrees(lng, lat, alt, undefined, out);
+}
+
+/**
  * 将 Cesium 笛卡尔3坐标转换为 Cgx 经纬度坐标
  * 
  * @description 该函数用于将 Cesium 内部的笛卡尔3坐标转换为通用的经纬度坐标格式。

@@ -98,7 +98,10 @@ vi.mock('cesium', () => {
         this.y = y;
         this.z = z;
       }
-      static fromDegrees = vi.fn((lng, lat, alt) => ({ x: lng, y: lat, z: alt }));
+      static fromDegrees = vi.fn((lng, lat, alt = 0, _ellipsoid, result) => {
+        if (result) { result.x = lng; result.y = lat; result.z = alt; return result; }
+        return { x: lng, y: lat, z: alt };
+      });
       static clone = vi.fn((c: any) => ({ ...c }));
     },
     Cartographic: {

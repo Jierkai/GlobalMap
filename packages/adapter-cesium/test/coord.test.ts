@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { LngLatPosition, toCartesian3, fromCartesian3 } from '../src/coord';
+import * as Cesium from 'cesium';
+import { LngLatPosition, toCartesian3, fromCartesian3, toCartesian3Into } from '../src/coord';
 
 describe('coord', () => {
   it('should convert LngLat to Cartesian3 and back', () => {
@@ -55,5 +56,24 @@ describe('coord', () => {
     expect(LngLatPosition.from('121,31')).toMatchObject({ lng: 121, lat: 31, alt: 0 });
     expect(LngLatPosition.from([122, 32, 10])).toMatchObject({ lng: 122, lat: 32, alt: 10 });
     expect(LngLatPosition.from({ lng: 123, lat: 33, alt: 20 })).toMatchObject({ lng: 123, lat: 33, alt: 20 });
+  });
+});
+
+describe('toCartesian3Into', () => {
+  it('写入既有对象并返回同一引用', () => {
+    const out = new Cesium.Cartesian3();
+    const ref = toCartesian3Into(out, 116, 39, 100);
+    // 必须返回同一引用，而非新对象
+    expect(ref).toBe(out);
+    // mock 直接把 lng/lat/alt 写入 x/y/z
+    expect(out.x).toBe(116);
+    expect(out.y).toBe(39);
+    expect(out.z).toBe(100);
+  });
+
+  it('toCartesian3 仍返回全新对象（向后兼容）', () => {
+    const a = toCartesian3({ lng: 116, lat: 39 });
+    const b = toCartesian3({ lng: 116, lat: 39 });
+    expect(a).not.toBe(b);
   });
 });
