@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Cesium from 'cesium';
-import { createCesiumAdapter } from '../src/adapter';
+import { createCesiumAdapter, __test__ } from '../src';
 
 describe('createCesiumAdapter', () => {
   it('mounts GeoJSON and tileset data layers through the layer channel', async () => {
@@ -165,6 +165,66 @@ describe('createCesiumAdapter', () => {
       expect.objectContaining({ id: 'p1', text: 'P1' }),
       expect.objectContaining({ id: 'text-1', text: 'Text' }),
     ]));
+
+    handle?.dispose();
+    await adapter.dispose?.();
+  });
+
+  it('coalesces primitive model feature updates until flush', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container');
+
+    const handle = adapter.mountFeature?.({
+      id: 'model-primitive-update',
+      kind: 'model',
+      position: [120, 30, 10],
+      model: { uri: '/initial.glb', renderMode: 'primitive' },
+    });
+
+    await Promise.resolve();
+    const primitive = handle?.unsafeNative?.() as any;
+    expect(primitive?.model?.uri).toBe('/initial.glb');
+
+    handle?.update?.({ model: { uri: '/first.glb', renderMode: 'primitive' } });
+    handle?.update?.({ model: { uri: '/final.glb', renderMode: 'primitive' } });
+    expect(primitive?.model?.uri).toBe('/initial.glb');
+
+    __test__.flushUpdates();
+    expect(primitive?.model?.uri).toBe('/final.glb');
+
+    handle?.dispose();
+    await adapter.dispose?.();
+  });
+
+  it('coalesces batched primitive feature updates until flush', async () => {
+    const adapter = createCesiumAdapter();
+    await adapter.initialize?.('test-container');
+
+    const handle = adapter.mountFeature?.({
+      id: 'point-primitive-update',
+      kind: 'point',
+      renderMode: 'primitive' as any,
+      position: [120, 30],
+      point: { pixelSize: 8 },
+    });
+
+    await Promise.resolve();
+    const pointPrimitive = (handle?.unsafeNative?.() as any[])
+      .find((primitive: any) => primitive.id === 'point-primitive-update:point');
+    expect(pointPrimitive.items).toEqual([
+      expect.objectContaining({ id: 'point-primitive-update', pixelSize: 8 }),
+    ]);
+
+    handle?.update?.({ point: { pixelSize: 12 } });
+    handle?.update?.({ point: { pixelSize: 16 } });
+    expect(pointPrimitive.items).toEqual([
+      expect.objectContaining({ id: 'point-primitive-update', pixelSize: 8 }),
+    ]);
+
+    __test__.flushUpdates();
+    expect(pointPrimitive.items).toEqual([
+      expect.objectContaining({ id: 'point-primitive-update', pixelSize: 16 }),
+    ]);
 
     handle?.dispose();
     await adapter.dispose?.();

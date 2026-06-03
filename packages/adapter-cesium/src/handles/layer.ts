@@ -22,6 +22,7 @@ import {
 } from '../layer';
 import { resolveProvider } from './_provider';
 import { GraphicLayerMount } from '../adapter';
+import { createBatchKey, getDefaultBatcher } from '../scheduler';
 
 export function createImageryLayerHandle(
   viewer: CesiumViewerHandle,
@@ -32,17 +33,32 @@ export function createImageryLayerHandle(
     resolveProvider(spec.provider) as Cesium.ImageryProvider | Promise<Cesium.ImageryProvider>,
   );
   applyVisibility(cesiumLayer as unknown as Record<string, unknown> | undefined, spec);
+  let current: ImageryLayerRenderSpec = spec;
+
+  const batcher = getDefaultBatcher();
+  const batchId = createBatchKey('layer', spec.id);
+  // apply 闭包：将补丁写入 Cesium ImageryLayer（visible→show，opacity→alpha）
+  const apply = (patch: Partial<LayerRenderSpec>): void => {
+    applyVisibility(
+      cesiumLayer as unknown as Record<string, unknown> | undefined,
+      latestVisibilityPatch(patch, current),
+    );
+  };
 
   return {
     id: spec.id,
     update(patch: Partial<LayerRenderSpec>) {
-      applyVisibility(cesiumLayer as unknown as Record<string, unknown> | undefined, patch);
+      current = { ...current, ...patch } as ImageryLayerRenderSpec;
+      batcher.enqueue(batchId, patch, apply);
     },
     setVisible(v) {
-      if (cesiumLayer) (cesiumLayer as unknown as { show: boolean }).show = v;
+      // 可见性是用户交互行为，同步写入
+      current = { ...current, visible: v };
+      batcher.enqueue(batchId, { visible: v } as Partial<LayerRenderSpec>, apply, { sync: true });
     },
     setOpacity(o) {
-      if (cesiumLayer) (cesiumLayer as unknown as { alpha: number }).alpha = o;
+      current = { ...current, opacity: o };
+      batcher.enqueue(batchId, { opacity: o } as Partial<LayerRenderSpec>, apply);
     },
     setZIndex(_z) {
       // Cesium imageryLayers reorder is non-trivial; defer to stage 4.
@@ -82,6 +98,15 @@ function applyVisibility(
   if (spec.opacity !== undefined) target.alpha = spec.opacity;
 }
 
+function latestVisibilityPatch(
+  patch: Partial<LayerRenderSpec>,
+  current: Partial<LayerRenderSpec>,
+): Partial<LayerRenderSpec> {
+  if (patch.visible === undefined || patch.visible === current.visible) return patch;
+  const { visible: _staleVisible, ...rest } = patch;
+  return rest;
+}
+
 function payloadRecord(payload: unknown): Record<string, unknown> {
   return payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
 }
@@ -94,6 +119,13 @@ export function createTilesetLayerHandle(
   let raw: Cesium.Cesium3DTileset | undefined;
   let loadVersion = 0;
   let current: DataLayerRenderSpec = spec;
+  const batcher = getDefaultBatcher();
+  const batchId = createBatchKey('layer', spec.id);
+
+  const apply = (patch: Partial<LayerRenderSpec>): void => {
+    if (disposed) return;
+    applyVisibility(raw as unknown as Record<string, unknown> | undefined, latestVisibilityPatch(patch, current));
+  };
 
   const attach = async (next: DataLayerRenderSpec): Promise<void> => {
     const version = ++loadVersion;
@@ -101,12 +133,12 @@ export function createTilesetLayerHandle(
     const url = payload.url;
     if (typeof url !== 'string') return;
     const mounted = await bridgeAdd3DTileset(viewer, url, next.options);
-    if (disposed || current !== next || version !== loadVersion) {
+    if (disposed || version !== loadVersion) {
       if (mounted) bridgeRemove3DTileset(viewer, mounted);
       return;
     }
     raw = mounted;
-    applyVisibility(raw as unknown as Record<string, unknown> | undefined, next);
+    applyVisibility(raw as unknown as Record<string, unknown> | undefined, current);
   };
 
   void attach(spec);
@@ -115,10 +147,11 @@ export function createTilesetLayerHandle(
     id: spec.id,
     update(patch: Partial<LayerRenderSpec>) {
       current = { ...current, ...patch } as DataLayerRenderSpec;
-      applyVisibility(raw as unknown as Record<string, unknown> | undefined, current);
+      batcher.enqueue(batchId, patch, apply);
     },
     setVisible(v) {
-      if (raw) (raw as unknown as { show: boolean }).show = v;
+      current = { ...current, visible: v };
+      batcher.enqueue(batchId, { visible: v } as Partial<LayerRenderSpec>, apply, { sync: true });
     },
     setOpacity(_o) { /* tileset opacity 不在本阶段处理 */ },
     setZIndex(_z) { /* tileset 没有 z-index 概念 */ },
@@ -142,20 +175,27 @@ export function createDataSourceLayerHandle(
   let raw: Cesium.DataSource | undefined;
   let loadVersion = 0;
   let current: DataLayerRenderSpec = spec;
+  const batcher = getDefaultBatcher();
+  const batchId = createBatchKey('layer', spec.id);
+
+  const apply = (patch: Partial<LayerRenderSpec>): void => {
+    if (disposed) return;
+    applyVisibility(raw as unknown as Record<string, unknown> | undefined, latestVisibilityPatch(patch, current));
+  };
 
   const attach = async (next: DataLayerRenderSpec): Promise<void> => {
     const version = ++loadVersion;
     const load = (Cesium as any).GeoJsonDataSource?.load;
     if (typeof load !== 'function') return;
     const dataSource = await load(next.payload, next.options);
-    if (disposed || current !== next) return;
+    if (disposed || version !== loadVersion) return;
     const mounted = await bridgeAddDataSource(viewer, dataSource);
-    if (disposed || current !== next || version !== loadVersion) {
+    if (disposed || version !== loadVersion) {
       if (mounted) bridgeRemoveDataSource(viewer, mounted);
       return;
     }
     raw = mounted;
-    applyVisibility(raw as unknown as Record<string, unknown> | undefined, next);
+    applyVisibility(raw as unknown as Record<string, unknown> | undefined, current);
   };
 
   void attach(spec);
@@ -164,13 +204,15 @@ export function createDataSourceLayerHandle(
     id: spec.id,
     update(patch: Partial<LayerRenderSpec>) {
       current = { ...current, ...patch } as DataLayerRenderSpec;
-      applyVisibility(raw as unknown as Record<string, unknown> | undefined, current);
+      batcher.enqueue(batchId, patch, apply);
     },
     setVisible(v) {
-      if (raw) (raw as unknown as { show: boolean }).show = v;
+      current = { ...current, visible: v };
+      batcher.enqueue(batchId, { visible: v } as Partial<LayerRenderSpec>, apply, { sync: true });
     },
     setOpacity(o) {
-      if (raw) (raw as unknown as { alpha?: number }).alpha = o;
+      current = { ...current, opacity: o };
+      batcher.enqueue(batchId, { opacity: o } as Partial<LayerRenderSpec>, apply);
     },
     setZIndex(_z) { /* dataSource 不支持显式 z 序 */ },
     unsafeNative: () => raw ?? null,
@@ -192,24 +234,32 @@ export function createGraphicLayerHandle(
 ): LayerHandle {
   const mount = new GraphicLayerMount(viewer, spec, mountFeature);
   let current: GraphicLayerRenderSpec = spec;
+  let applied: GraphicLayerRenderSpec = spec;
+  const batcher = getDefaultBatcher();
+  const batchId = createBatchKey('layer', spec.id);
+
+  const apply = (patch: Partial<LayerRenderSpec>): void => {
+    applied = { ...applied, ...latestVisibilityPatch(patch, current) } as GraphicLayerRenderSpec;
+    mount.update(applied);
+  };
 
   return {
     id: spec.id,
     update(patch: Partial<LayerRenderSpec>) {
       current = { ...current, ...patch } as GraphicLayerRenderSpec;
-      mount.update(current);
+      batcher.enqueue(batchId, patch, apply);
     },
     setVisible(v) {
       current = { ...current, visible: v };
-      mount.update(current);
+      batcher.enqueue(batchId, { visible: v } as Partial<LayerRenderSpec>, apply, { sync: true });
     },
     setOpacity(o) {
       current = { ...current, opacity: o };
-      mount.update(current);
+      batcher.enqueue(batchId, { opacity: o } as Partial<LayerRenderSpec>, apply);
     },
     setZIndex(z) {
       current = { ...current, zIndex: z };
-      mount.update(current);
+      batcher.enqueue(batchId, { zIndex: z } as Partial<LayerRenderSpec>, apply);
     },
     unsafeNative: () => mount.raw(),
     dispose() {
