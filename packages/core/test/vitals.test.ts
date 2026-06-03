@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CgxViewer } from '../src/viewer/CgxViewer.js';
 import { createVitalsHud } from '../src/vitals/VitalsHud.js';
-import { metricsBus } from '../src/vitals/MetricsBus.js';
+import { MetricsBus, metricsBus } from '../src/vitals/MetricsBus.js';
+import { MetricsBus as PublicMetricsBus, metricsBus as publicMetricsBus } from '../src/index.js';
 import type { EngineAdapter } from '../src/adapter/EngineAdapter.js';
 
 function createMockAdapter(): EngineAdapter {
@@ -99,5 +100,71 @@ describe('VitalsHud', () => {
     expect(text).toContain('Escape: 3');
 
     hud!.detach();
+  });
+
+  it('should update all enabled stage 4 metrics after metricsBus changes', () => {
+    const adapter = createMockAdapter();
+    const viewer = new CgxViewer({ adapter });
+    const hud = createVitalsHud(viewer, {
+      enabled: true,
+      framePatchCount: true,
+      frameNativeWriteCount: true,
+      poolHitRate: true,
+      escapeHatchCallCount: true,
+    });
+
+    expect(hud).not.toBeNull();
+
+    metricsBus.record('framePatchCount', 2);
+    metricsBus.set('frameNativeWriteCount', 4);
+    metricsBus.set('poolHitRate', 0.625);
+    metricsBus.record('escapeHatchCallCount');
+
+    const text = document.querySelector('.cgx-vitals-hud')!.textContent ?? '';
+    expect(text).toContain('Patch: 2');
+    expect(text).toContain('Writes: 4');
+    expect(text).toContain('Pool: 63%');
+    expect(text).toContain('Escape: 1');
+
+    hud!.detach();
+  });
+});
+
+describe('MetricsBus', () => {
+  it('is exported from the public core entrypoint', () => {
+    expect(publicMetricsBus).toBe(metricsBus);
+    expect(new PublicMetricsBus()).toBeInstanceOf(MetricsBus);
+  });
+
+  it('supports record, set, snapshot, reset, and subscribe semantics', () => {
+    const bus = new MetricsBus();
+    const events: Array<[string, number]> = [];
+    const unsubscribe = bus.subscribe((name, value) => {
+      events.push([name, value]);
+    });
+
+    bus.record('escapeHatchCallCount');
+    bus.record('escapeHatchCallCount', 2);
+    bus.set('poolHitRate', 0.5);
+
+    expect(bus.snapshot()).toEqual({
+      escapeHatchCallCount: 3,
+      poolHitRate: 0.5,
+    });
+    expect(events).toEqual([
+      ['escapeHatchCallCount', 1],
+      ['escapeHatchCallCount', 3],
+      ['poolHitRate', 0.5],
+    ]);
+
+    unsubscribe();
+    bus.record('escapeHatchCallCount');
+
+    expect(events).toHaveLength(3);
+    expect(bus.snapshot().escapeHatchCallCount).toBe(4);
+
+    bus.reset();
+
+    expect(bus.snapshot()).toEqual({});
   });
 });

@@ -14,7 +14,7 @@ export type MetricsHandler = (name: string, value: number) => void;
  * - 计数器（counter）：通过 {@link MetricsBus.record} 累加
  * - 仪表（gauge）：通过 {@link MetricsBus.set} 替换为最新值
  */
-class MetricsBus {
+export class MetricsBus {
   private readonly handlers = new Set<MetricsHandler>();
   private readonly values = new Map<string, number>();
 

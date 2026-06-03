@@ -63,7 +63,8 @@ function isNumberArray(value: unknown): value is readonly number[] {
  * ```
  */
 export function toCartesian3(lngLat: LngLat): NativeCartesian3 {
-  return LngLatPosition.from(lngLat).toCartesian3();
+  const out = new Cesium.Cartesian3();
+  return toCartesian3Into(out, lngLat.lng, lngLat.lat, lngLat.alt ?? 0) as unknown as NativeCartesian3;
 }
 
 /**

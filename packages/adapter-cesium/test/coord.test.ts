@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as Cesium from 'cesium';
 import { LngLatPosition, toCartesian3, fromCartesian3, toCartesian3Into } from '../src/coord';
+import { createViewer } from '../src/viewer';
+import { unsafeGetCesium, unsafeGetNativeViewer } from '../src/escape-hatch';
+import { metricsBus } from '@cgx/core';
 
 describe('coord', () => {
   it('should convert LngLat to Cartesian3 and back', () => {
@@ -60,6 +63,10 @@ describe('coord', () => {
 });
 
 describe('toCartesian3Into', () => {
+  beforeEach(() => {
+    vi.mocked(Cesium.Cartesian3.fromDegrees).mockClear();
+  });
+
   it('写入既有对象并返回同一引用', () => {
     const out = new Cesium.Cartesian3();
     const ref = toCartesian3Into(out, 116, 39, 100);
@@ -75,5 +82,40 @@ describe('toCartesian3Into', () => {
     const a = toCartesian3({ lng: 116, lat: 39 });
     const b = toCartesian3({ lng: 116, lat: 39 });
     expect(a).not.toBe(b);
+  });
+
+  it('toCartesian3 通过复用 result 参数委托给 toCartesian3Into', () => {
+    const cartesian = toCartesian3({ lng: 116, lat: 39, alt: 100 }) as Cesium.Cartesian3;
+    const fromDegrees = vi.mocked(Cesium.Cartesian3.fromDegrees);
+    const call = fromDegrees.mock.calls[0];
+
+    expect(fromDegrees).toHaveBeenCalledTimes(1);
+    expect(call[0]).toBe(116);
+    expect(call[1]).toBe(39);
+    expect(call[2]).toBe(100);
+    expect(call[4]).toBeInstanceOf(Cesium.Cartesian3);
+    expect(cartesian).toBe(call[4]);
+  });
+});
+
+describe('escape hatch metrics', () => {
+  beforeEach(() => {
+    metricsBus.reset();
+  });
+
+  it('records unsafe Cesium module access', () => {
+    unsafeGetCesium();
+    unsafeGetCesium();
+
+    expect(metricsBus.snapshot().escapeHatchCallCount).toBe(2);
+  });
+
+  it('records unsafe native viewer access', () => {
+    const handle = createViewer(document.createElement('div'), {});
+
+    unsafeGetNativeViewer(handle);
+
+    expect(metricsBus.snapshot().escapeHatchCallCount).toBe(1);
+    handle.destroy();
   });
 });
