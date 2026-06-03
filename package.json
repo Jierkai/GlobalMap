@@ -8,6 +8,7 @@
     "test": "turbo run test",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
+    "bench": "pnpm --filter @cgx/adapter-cesium bench",
     "dev:example": "pnpm --filter @cgx/example-sandcastle dev",
     "build:example": "pnpm --filter @cgx/example-sandcastle build",
     "compliance:scan": "bash scripts/compliance-scan.sh",
