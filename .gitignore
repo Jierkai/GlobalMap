@@ -40,5 +40,10 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+*.local
 .workbuddy/
 .superpowers/
+
+# VitePress
+.vitepress/cache/
+.vitepress/dist/
