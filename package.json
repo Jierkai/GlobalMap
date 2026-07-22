@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "changeset": "changeset",
     "version": "changeset version",
-    "publish": "changeset publish"
+    "publish": "changeset publish",
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{ts,vue,js}": "eslint --fix",
