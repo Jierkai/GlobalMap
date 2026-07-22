@@ -66,7 +66,7 @@ GlobalMap/
 │   │   │   ├── event/           # 事件系统
 │   │   │   ├── util/            # core 内部工具（依赖 Cesium）
 │   │   │   └── type/            # 集中接口定义
-│   │   └── __mocks__/cesium.ts  # Cesium mock
+│   │   └── mocks/cesium.ts       # Cesium mock
 │   ├── example/                 # 示例演示包 @globalmap/example
 │   │   ├── package.json
 │   │   ├── vite.config.ts       # 含 vite-plugin-cesium
@@ -133,6 +133,8 @@ map.destroy()                   // 幂等销毁，逆序清理
 
 ```typescript
 interface EventMap {
+  'map3d:ready': void
+  'map3d:destroyed': void
   'layer:added': { layer: BaseLayer }
   'layer:removed': { layerId: string }
   'layer:showChanged': { layerId: string; show: boolean }
@@ -148,7 +150,24 @@ interface EventMap {
 - 新增事件必须在 `EventMap` 中显式声明
 - 每个域只发自己域的事件，写操作事件由执行方内部触发
 
-### 5.5 Base 类设计
+### 5.5 Disposable 与 Manager 接口
+
+```typescript
+interface Disposable {
+  readonly destroyed: boolean
+  destroy(): void
+}
+
+interface Manager extends Disposable {
+  init(): void
+}
+```
+
+- `Disposable` 是所有可销毁对象的统一契约
+- `Manager` 接口约束所有域 Manager 必须实现 `init()` 和 `destroy()`
+- `Map3D` 内部通过 `Manager[]` 管理所有 Manager 的销毁顺序
+
+### 5.6 Base 类设计
 
 ```typescript
 abstract class BaseLayer implements Disposable {
@@ -178,13 +197,15 @@ abstract class BaseLayer implements Disposable {
 - `show` setter 联动实际图层可见性
 - `BaseGraphic` 同模式，泛型 `TStyle extends GraphicStyle`，style 必填
 
-### 5.6 Cesium 静态资源方案
+### 5.7 Cesium 静态资源方案
 
 - `Map3D` 构造函数要求传入 `cesiumBaseUrl: string`
 - 初始化时执行 `window.CESIUM_BASE_URL = cesiumBaseUrl`
 - `core` 构建时外置 `cesium`，不打包
 - `example` 使用 `vite-plugin-cesium` 自动处理静态资源
 - 文档提供 Webpack `copy-webpack-plugin` 方案指引
+
+注：Cesium 实际在首次创建 Worker / 加载资源时才读 `CESIUM_BASE_URL`，非模块加载时，因此构造函数内设置通常安全。如遇边缘场景，可提供独立 `setCesiumBaseUrl()` 函数供用户提前调用。
 
 ## 6. 工程化配置
 
@@ -208,6 +229,18 @@ abstract class BaseLayer implements Disposable {
   "lint-staged": {
     "*.{ts,vue,js}": "eslint --fix",
     "*.{json,md}": "prettier --write"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.25.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0"
   }
 }
 ```
