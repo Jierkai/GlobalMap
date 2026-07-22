@@ -40,3 +40,5 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+.workbuddy/
+.superpowers/

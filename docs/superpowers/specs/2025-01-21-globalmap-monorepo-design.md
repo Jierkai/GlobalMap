@@ -66,7 +66,7 @@ GlobalMap/
 │   │   │   ├── event/           # 事件系统
 │   │   │   ├── util/            # core 内部工具（依赖 Cesium）
 │   │   │   └── type/            # 集中接口定义
-│   │   └── mocks/cesium.ts       # Cesium mock
+│   │   └── __mocks__/cesium.ts       # Cesium mock
 │   ├── example/                 # 示例演示包 @globalmap/example
 │   │   ├── package.json
 │   │   ├── vite.config.ts       # 含 vite-plugin-cesium
