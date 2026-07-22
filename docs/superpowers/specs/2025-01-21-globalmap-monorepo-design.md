@@ -13,17 +13,17 @@ GlobalMap 是一个基于 Cesium 二次封装的三维地图库，定位为 Mars
 
 ## 3. 技术选型
 
-| 项目 | 选型 | 说明 |
-|------|------|------|
-| 包管理器 | pnpm workspace | 磁盘效率高，monorepo 生态成熟 |
-| 核心库语言 | 纯 TypeScript | 框架无关，示例用 Vue3 演示 |
-| Cesium 依赖 | peerDependencies | 版本范围 `>=1.120.0 <1.124.0` |
-| 模块格式 | ESM only | tree-shaking 最佳，现代标准 |
-| 构建工具 | Vite build mode | 配置简单，适合浏览器库 |
-| 测试框架 | Vitest | 各包独立配置 |
-| 版本管理 | Changesets | 声明式版本发布 |
-| 代码规范 | ESLint flat config + Prettier | 根目录统一配置 |
-| 提交钩子 | husky + lint-staged | 提交时自动 lint |
+| 项目        | 选型                          | 说明                          |
+| ----------- | ----------------------------- | ----------------------------- |
+| 包管理器    | pnpm workspace                | 磁盘效率高，monorepo 生态成熟 |
+| 核心库语言  | 纯 TypeScript                 | 框架无关，示例用 Vue3 演示    |
+| Cesium 依赖 | peerDependencies              | 版本范围 `>=1.120.0 <1.124.0` |
+| 模块格式    | ESM only                      | tree-shaking 最佳，现代标准   |
+| 构建工具    | Vite build mode               | 配置简单，适合浏览器库        |
+| 测试框架    | Vitest                        | 各包独立配置                  |
+| 版本管理    | Changesets                    | 声明式版本发布                |
+| 代码规范    | ESLint flat config + Prettier | 根目录统一配置                |
+| 提交钩子    | husky + lint-staged           | 提交时自动 lint               |
 
 ## 4. 目录结构
 
@@ -114,8 +114,8 @@ GlobalMap/
 ### 5.2 Map3D 生命周期
 
 ```typescript
-const map = new Map3D(options)  // 构造函数内完成所有初始化
-map.destroy()                   // 幂等销毁，逆序清理
+const map = new Map3D(options) // 构造函数内完成所有初始化
+map.destroy() // 幂等销毁，逆序清理
 ```
 
 - 构造函数分两个阶段：实例化所有 Manager → 自动调用 init() 建立跨域关联
@@ -178,18 +178,18 @@ abstract class BaseLayer implements Disposable {
   constructor(
     public readonly id: string,
     protected viewer: Cesium.Viewer,
-    protected eventBus: EventBus
+    protected eventBus: EventBus,
   ) {}
 
   get show(): boolean
-  set show(value: boolean)  // 去重检查 + _updateShow + emit
+  set show(value: boolean) // 去重检查 + _updateShow + emit
   get destroyed(): boolean
 
   abstract addToMap(): void
   abstract removeFromMap(): void
   protected abstract _updateShow(show: boolean): void
 
-  destroy(): void  // 幂等，调用 removeFromMap
+  destroy(): void // 幂等，调用 removeFromMap
 }
 ```
 
@@ -273,6 +273,7 @@ abstract class BaseLayer implements Disposable {
 ### 6.3 依赖声明
 
 所有包依赖统一使用 `workspace:*`：
+
 ```json
 "dependencies": {
   "@globalmap/core": "workspace:*",
