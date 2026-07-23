@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Map3D } from '../Map3D'
 import { EventBus } from '../../event'
+import { LayerManager } from '../../layer/LayerManager'
 
 vi.mock('cesium')
 
@@ -95,5 +96,23 @@ describe('Map3D', () => {
     map.destroy()
     expect(states).toEqual([false])
     expect(map.eventBus.destroyed).toBe(true)
+  })
+
+  it('map.layer 可访问 LayerManager 实例', () => {
+    const map = createMap()
+    expect(map.layer).toBeInstanceOf(LayerManager)
+  })
+
+  it('map.destroy 级联销毁 layer manager（先于 viewer）', () => {
+    const map = createMap()
+    const order: string[] = []
+    vi.spyOn(map.layer, 'destroy').mockImplementation(() => {
+      order.push('layer')
+    })
+    vi.spyOn(map.viewer, 'destroy').mockImplementation(() => {
+      order.push('viewer')
+    })
+    map.destroy()
+    expect(order).toEqual(['layer', 'viewer'])
   })
 })
