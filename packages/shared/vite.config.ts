@@ -13,6 +13,7 @@ export default defineConfig({
   plugins: [
     dts({
       outDir: 'dist',
+      exclude: ['src/**/__tests__/**', 'src/**/*.test.ts'],
       tsconfigPath: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),
     }),
   ],
