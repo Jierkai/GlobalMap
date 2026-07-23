@@ -1,12 +1,8 @@
+import type { BaseLayer } from '../layer/BaseLayer'
 import type { BaseGraphic } from './graphic'
 import type { MeasureResult } from './graphic'
 
-/**
- * 图层对象的最小形状（占位，后续 layer 域迭代扩展）。
- */
-export interface BaseLayer {
-  id: string
-}
+export type { BaseLayer }
 
 /**
  * 强类型事件总线的事件表（设计文档 §5.4 原文）。

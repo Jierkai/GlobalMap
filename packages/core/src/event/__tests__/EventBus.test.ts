@@ -5,11 +5,11 @@ describe('EventBus', () => {
   it('on 订阅后 emit 触发 handler 并传入负载', () => {
     const bus = new EventBus()
     const handler = vi.fn()
-    bus.on('layer:added', handler)
-    const layer = { id: 'l1' }
-    bus.emit('layer:added', { layer })
+    bus.on('measure:completed', handler)
+    const payload = { result: { type: 'distance', value: 100, text: '100 m' } }
+    bus.emit('measure:completed', payload)
     expect(handler).toHaveBeenCalledTimes(1)
-    expect(handler).toHaveBeenCalledWith({ layer })
+    expect(handler).toHaveBeenCalledWith(payload)
   })
 
   it('on 返回取消订阅函数，调用后不再触发', () => {
@@ -54,9 +54,9 @@ describe('EventBus', () => {
   it('destroy 后 emit 静默无效，handler 不再触发', () => {
     const bus = new EventBus()
     const handler = vi.fn()
-    bus.on('layer:added', handler)
+    bus.on('graphic:removed', handler)
     bus.destroy()
-    bus.emit('layer:added', { layer: { id: 'l1' } })
+    bus.emit('graphic:removed', { graphicId: 'g1' })
     expect(handler).not.toHaveBeenCalled()
   })
 
