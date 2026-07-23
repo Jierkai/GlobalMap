@@ -1,5 +1,6 @@
 import { Viewer } from 'cesium'
 import { EventBus } from '../event'
+import { GraphicManager } from '../graphic'
 import { LayerManager } from '../layer'
 import { setCesiumBaseUrl } from '../util'
 import type { Disposable, Map3DOptions } from '../type'
@@ -20,6 +21,7 @@ export class Map3D implements Disposable {
   private _viewer: Viewer
   private _eventBus: EventBus
   private _layer: LayerManager
+  private _graphic: GraphicManager
   private _destroyed = false
   /** 销毁栈（不含 eventBus；eventBus 逻辑上最先注册、最后单独销毁） */
   private _disposers: Array<() => void> = []
@@ -29,8 +31,10 @@ export class Map3D implements Disposable {
     this._viewer = new Viewer(options.container, options.viewerOptions)
     this._eventBus = new EventBus()
     this._layer = new LayerManager(this)
+    this._graphic = new GraphicManager(this)
     this._disposers.push(() => this._viewer.destroy())
     this._disposers.push(() => this._layer.destroy())
+    this._disposers.push(() => this._graphic.destroy())
     this.init()
     this._eventBus.emit('map3d:ready')
   }
@@ -38,6 +42,7 @@ export class Map3D implements Disposable {
   /** 建立跨域关联：全部 Manager 实例化后逐个 init（任务 21-23 陆续接入） */
   private init(): void {
     this._layer.init()
+    this._graphic.init()
   }
 
   get viewer(): Viewer {
@@ -50,6 +55,10 @@ export class Map3D implements Disposable {
 
   get layer(): LayerManager {
     return this._layer
+  }
+
+  get graphic(): GraphicManager {
+    return this._graphic
   }
 
   get destroyed(): boolean {

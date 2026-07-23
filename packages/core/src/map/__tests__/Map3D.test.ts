@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Map3D } from '../Map3D'
 import { EventBus } from '../../event'
 import { LayerManager } from '../../layer/LayerManager'
+import { GraphicManager } from '../../graphic/GraphicManager'
 
 vi.mock('cesium')
 
@@ -114,5 +115,12 @@ describe('Map3D', () => {
     })
     map.destroy()
     expect(order).toEqual(['layer', 'viewer'])
+  })
+
+  it('map.graphic 可访问 GraphicManager 实例，map.destroy 级联销毁', () => {
+    const map = createMap()
+    expect(map.graphic).toBeInstanceOf(GraphicManager)
+    map.destroy()
+    expect(map.graphic.destroyed).toBe(true)
   })
 })
