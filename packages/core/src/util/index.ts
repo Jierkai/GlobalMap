@@ -1,1 +1,1 @@
-export {}
+export { setCesiumBaseUrl } from './cesium'
