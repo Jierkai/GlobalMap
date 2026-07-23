@@ -3,8 +3,38 @@ import { Map3D } from '../Map3D'
 import { EventBus } from '../../event'
 import { LayerManager } from '../../layer/LayerManager'
 import { GraphicManager } from '../../graphic/GraphicManager'
+import { PrimitiveManager } from '../../primitive/PrimitiveManager'
+import { PlotManager } from '../../plot/PlotManager'
+import { MeasureManager } from '../../measure/MeasureManager'
+import { RoamManager } from '../../roam/RoamManager'
+import { EffectManager } from '../../effect/EffectManager'
+import { MaterialManager } from '../../material/MaterialManager'
+import { AnalyseManager } from '../../analyse/AnalyseManager'
+import { TransformManager } from '../../transform/TransformManager'
+import { ControlManager } from '../../control/ControlManager'
+import { ResourceManager } from '../../resource/ResourceManager'
+import { SceneManager } from '../../scene/SceneManager'
 
 vi.mock('cesium')
+
+/** 13 个域 Manager 的名称 → 原型映射（供 init 时序断言） */
+function map3dManagerProtos() {
+  return {
+    layer: LayerManager.prototype,
+    graphic: GraphicManager.prototype,
+    primitive: PrimitiveManager.prototype,
+    plot: PlotManager.prototype,
+    measure: MeasureManager.prototype,
+    roam: RoamManager.prototype,
+    effect: EffectManager.prototype,
+    material: MaterialManager.prototype,
+    analyse: AnalyseManager.prototype,
+    transform: TransformManager.prototype,
+    control: ControlManager.prototype,
+    resource: ResourceManager.prototype,
+    scene: SceneManager.prototype,
+  }
+}
 
 function createMap(cesiumBaseUrl = '/cesium') {
   return new Map3D({ container: 'map-container', cesiumBaseUrl })
@@ -122,5 +152,51 @@ describe('Map3D', () => {
     expect(map.graphic).toBeInstanceOf(GraphicManager)
     map.destroy()
     expect(map.graphic.destroyed).toBe(true)
+  })
+
+  it('13 个域 getter 全部存在', () => {
+    const map = createMap()
+    const getters = [
+      'layer',
+      'graphic',
+      'primitive',
+      'plot',
+      'measure',
+      'roam',
+      'effect',
+      'material',
+      'analyse',
+      'transform',
+      'control',
+      'resource',
+      'scene',
+    ] as const
+    for (const key of getters) {
+      expect(map[key], `map.${key} 应存在`).toBeDefined()
+      expect(typeof map[key].init).toBe('function')
+      expect(typeof map[key].destroy).toBe('function')
+    }
+  })
+
+  it('map3d:ready 时序守护：触发时全部 Manager 的 init 均已执行', () => {
+    const initLog: string[] = []
+    const protoSources = [
+      map3dManagerProtos(),
+    ][0]
+    for (const [name, proto] of Object.entries(protoSources)) {
+      vi.spyOn(proto, 'init').mockImplementation(() => {
+        initLog.push(name)
+      })
+    }
+    const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
+    createMap()
+    expect(initLog).toHaveLength(13)
+    // ready 触发点之前必须已完成 13 次 init
+    const readyCallOrder = emitSpy.mock.invocationCallOrder[0]
+    expect(emitSpy.mock.calls[0][0]).toBe('map3d:ready')
+    for (const proto of Object.values(protoSources)) {
+      const spy = proto.init as ReturnType<typeof vi.fn>
+      expect(spy.mock.invocationCallOrder[0]).toBeLessThan(readyCallOrder)
+    }
   })
 })
