@@ -9,6 +9,5 @@
     "isolatedModules": true,
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
-  },
-  "files": ["global.d.ts"]
+  }
 }
