@@ -66,14 +66,34 @@ describe('Map3D', () => {
     })
   })
 
-  it('map3d:ready 在构造函数返回前已触发', () => {
-    const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
+  it('map3d:ready 由构造触发，先 on 订阅的 listener 被调用一次', async () => {
     const map = createMap()
-    expect(emitSpy).toHaveBeenCalledWith('map3d:ready')
-    // 构造完成后再订阅不会重复触发（证明非延迟触发）
+    const handler = vi.fn()
+    // 外部消费者标准用法：new 之后同步订阅即可收到（微任务触发）
+    map.eventBus.on('map3d:ready', handler)
+    await Promise.resolve()
+    expect(handler).toHaveBeenCalledTimes(1)
+    // 不重复触发
+    await Promise.resolve()
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('map3d:ready 触发后再订阅不会收到（非持续状态）', async () => {
+    const map = createMap()
+    await Promise.resolve()
     const late = vi.fn()
     map.eventBus.on('map3d:ready', late)
+    await Promise.resolve()
     expect(late).not.toHaveBeenCalled()
+  })
+
+  it('微任务触发前已 destroy 的地图不再 emit ready', async () => {
+    const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
+    const map = createMap()
+    map.destroy()
+    await Promise.resolve()
+    const readyCalls = emitSpy.mock.calls.filter((c) => c[0] === 'map3d:ready')
+    expect(readyCalls).toHaveLength(0)
   })
 
   it('getter 暴露 viewer/eventBus/destroyed', () => {
@@ -178,11 +198,9 @@ describe('Map3D', () => {
     }
   })
 
-  it('map3d:ready 时序守护：触发时全部 Manager 的 init 均已执行', () => {
+  it('map3d:ready 时序守护：触发时全部 Manager 的 init 均已执行', async () => {
     const initLog: string[] = []
-    const protoSources = [
-      map3dManagerProtos(),
-    ][0]
+    const protoSources = map3dManagerProtos()
     for (const [name, proto] of Object.entries(protoSources)) {
       vi.spyOn(proto, 'init').mockImplementation(() => {
         initLog.push(name)
@@ -190,6 +208,7 @@ describe('Map3D', () => {
     }
     const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
     createMap()
+    await Promise.resolve()
     expect(initLog).toHaveLength(13)
     // ready 触发点之前必须已完成 13 次 init
     const readyCallOrder = emitSpy.mock.invocationCallOrder[0]

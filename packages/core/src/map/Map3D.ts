@@ -82,9 +82,14 @@ export class Map3D implements Disposable {
     this._disposers.push(() => this._control.destroy())
     this._disposers.push(() => this._resource.destroy())
     this._disposers.push(() => this._scene.destroy())
-    // 阶段②：建立跨域关联，全部完成后才 emit ready
+    // 阶段②：建立跨域关联，全部完成后才调度 ready
     this.init()
-    this._eventBus.emit('map3d:ready')
+    // map3d:ready 以微任务触发（仍由构造函数调度、仍在全部 init 之后）：
+    // 外部消费者在 new 之后同步 on 订阅即可收到（Vue onMounted 场景），
+    // 这是消费者判断地图就绪的唯一信号。
+    queueMicrotask(() => {
+      if (!this._destroyed) this._eventBus.emit('map3d:ready')
+    })
   }
 
   /** 建立跨域关联：全部 Manager 实例化后逐个 init */
