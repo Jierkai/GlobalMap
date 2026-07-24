@@ -70,8 +70,10 @@ describe('EventBus', () => {
 
   it('未订阅的事件 emit 不报错', () => {
     const bus = new EventBus()
-    expect(() => bus.emit('measure:completed', {
-      result: { type: 'distance', value: 1, text: '1 m' },
-    })).not.toThrow()
+    expect(() =>
+      bus.emit('measure:completed', {
+        result: { type: 'distance', value: 1, text: '1 m' },
+      }),
+    ).not.toThrow()
   })
 })

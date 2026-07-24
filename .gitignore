@@ -47,3 +47,4 @@ temp/
 # VitePress
 .vitepress/cache/
 .vitepress/dist/
+*.timestamp-*.mjs

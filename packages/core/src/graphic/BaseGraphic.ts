@@ -8,9 +8,9 @@ import type { Disposable, GraphicStyle } from '../type'
  * 与 BaseLayer 同模式，差异：泛型 `<TStyle extends GraphicStyle>`、
  * 构造参数含必填 `style`，`show` 变更 emit `graphic:showChanged`。
  */
-export abstract class BaseGraphic<TStyle extends GraphicStyle = GraphicStyle>
-  implements Disposable
-{
+export abstract class BaseGraphic<
+  TStyle extends GraphicStyle = GraphicStyle,
+> implements Disposable {
   abstract readonly type: string
   protected _show = true
   protected _destroyed = false

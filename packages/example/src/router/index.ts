@@ -19,9 +19,7 @@ const CaseView = defineComponent({
     const route = useRoute()
     const component = computed(() => {
       const name = String(route.params.name)
-      const loader = caseModules[`../views/cases/${name}.vue`] as
-        | AsyncComponentLoader
-        | undefined
+      const loader = caseModules[`../views/cases/${name}.vue`] as AsyncComponentLoader | undefined
       return loader ? defineAsyncComponent(loader) : null
     })
     return () =>
