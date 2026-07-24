@@ -26,5 +26,15 @@ export default [
       'vue/multi-word-component-names': 'off',
     },
   },
+  {
+    // Node 脚本（scripts/*.mjs）声明 Node 全局
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+      },
+    },
+  },
   prettier,
 ]

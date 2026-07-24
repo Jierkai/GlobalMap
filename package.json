@@ -7,8 +7,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "pnpm -r build",
-    "dev": "pnpm --filter @globalmap/example dev",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "format": "prettier --write .",
