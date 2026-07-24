@@ -10,5 +10,12 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+  {
+    // 路由视图组件以单单词文件名命名（Home.vue 等），不属于可复用组件
+    files: ['**/views/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
   prettier,
 ]
