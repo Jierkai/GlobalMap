@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@zip.js/zip.js': 2.7.73
+
 importers:
 
   .:
@@ -1027,9 +1030,9 @@ packages:
   '@vueuse/shared@12.8.2':
     resolution: {integrity: sha512-dznP38YzxZoNloI0qpEfpkms8knDtaoQ6Y/sfS0L7Yki4zh40LFHEhur0odJC6xTHG5dxWVPiUWBXn+wCG2s5w==, tarball: https://registry.npmmirror.com/@vueuse/shared/-/shared-12.8.2.tgz}
 
-  '@zip.js/zip.js@2.8.34':
-    resolution: {integrity: sha512-+6a3lyqq69rpseLbvDPiVIWsZ/HdTGAAD6afFtug6ECPDGttb2dHnPC6cJgdPofYkzL9OvXizegq+DQVfL2rnA==, tarball: https://registry.npmmirror.com/@zip.js/zip.js/-/zip.js-2.8.34.tgz}
-    engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=18.0.0'}
+  '@zip.js/zip.js@2.7.73':
+    resolution: {integrity: sha512-I2UP8/rdQE5hTtVVL08B7P8XuwXiKuuMUPjNuFOVL/9b+8IsExR9S5jz2H58u0rJjU4M1BikLgqEMG8gZJZVBw==, tarball: https://registry.npmmirror.com/@zip.js/zip.js/-/zip.js-2.7.73.tgz}
+    engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=16.5.0'}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==, tarball: https://registry.npmmirror.com/acorn-jsx/-/acorn-jsx-5.3.2.tgz}
@@ -2887,7 +2890,7 @@ snapshots:
   '@cesium/engine@10.1.0':
     dependencies:
       '@tweenjs/tween.js': 23.1.3
-      '@zip.js/zip.js': 2.8.34
+      '@zip.js/zip.js': 2.7.73
       autolinker: 4.1.5
       bitmap-sdf: 1.0.4
       dompurify: 3.4.12
@@ -3787,7 +3790,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@zip.js/zip.js@2.8.34': {}
+  '@zip.js/zip.js@2.7.73': {}
 
   acorn-jsx@5.3.2(acorn@8.17.0):
     dependencies:
