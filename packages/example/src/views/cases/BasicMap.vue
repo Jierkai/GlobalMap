@@ -55,8 +55,9 @@ onMounted(() => {
   map = new Map3D({
     container: 'map-container',
     cesiumBaseUrl: import.meta.env.BASE_URL + 'cesium',
-    // 本案例不做实体点选：禁用 InfoBox，消除其沙箱 iframe 的 Chrome 拦截提示
-    viewerOptions: { infoBox: false },
+    // 本案例不做实体点选：禁用 InfoBox，消除其沙箱 iframe 的 Chrome 拦截提示；
+    // 当前网络无法访问 api.cesium.com：关闭默认 ion 在线影像（蓝色椭球照样验证渲染）
+    viewerOptions: { infoBox: false, baseLayer: false },
   })
   const { eventBus } = map
 
