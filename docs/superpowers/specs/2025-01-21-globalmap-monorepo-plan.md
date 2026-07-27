@@ -8,6 +8,8 @@
 > 1. 任务 13 补充 `util/` 目录占位说明（覆盖设计文档 §4 的 util/ 域），并新增任务 13.1。
 > 2. 新增任务 13.1 实现 `setCesiumBaseUrl`（设计文档 §5.7 注），任务 24 导出、任务 32 文档引用，消除"文档写了代码没有"的脱节。
 > 3. 任务 19 明确 `map3d:ready` 触发时机（全部初始化完成后）并补充 TDD 用例；任务 23 增加 ready 时序守护；任务 29 示例演示 ready 订阅。
+>
+> **修订记录（2026-07-27，设计定稿）**：追加批次 8（任务 36–40）——Base 类晚期绑定 + options 构造（id 缺省 generateId）、GraphicLayer（layer 域）管理图元、删除全局 GraphicManager（13→12 getter）、Map3DOptions 扩展 layer/basemapsLayer 及各域占位配置项、BasicMap 改空演示。本批次为**设计定稿**，当前阶段不做代码开发，移交实现方按 TDD 落地。
 
 ## 0. 范围声明（YAGNI）
 
@@ -531,6 +533,86 @@
 
 > **检查点 7**：全部成功标准通过 → 进入 Code Review 阶段（输出 `review.md`），随后 Finishing 阶段。
 
+---
+
+## 4.1 批次 8：骨架架构调整（晚期绑定 + GraphicLayer + Map3DOptions 占位，2026-07-27 设计定稿）
+
+> **性质**：本批次为**设计定稿**。设计文档（design.md）已完成 §5.4/§5.6/§5.8/§5.9/§6.4 修订；以下任务为**后续代码实现的工作分解**，**当前阶段不执行代码开发**，移交实现方按 TDD 红-绿逐任务落地。
+>
+> 调整要点（相对骨架初版）：
+>
+> 1. Base 类改**晚期绑定**，构造收 **options 对象**；`id` 缺省经 `generateId()`（shared）随机生成。
+> 2. 新增 **GraphicLayer**（归 **layer 域**），图元统一由其管理；**删除全局 GraphicManager / `map.graphic`**，13 域 getter 收为 **12 个**。
+> 3. `Map3DOptions` 扩展 `layer` / `basemapsLayer` 初始化集合，及 `measure`/`control` 等未开发域的 `Record` 占位配置项。
+> 4. shared 新增 `generateId()` 纯函数。
+> 5. BasicMap 演示改为**空项目**。
+
+### 任务 36：shared/generateId（TDD）
+
+- 文件：
+  - `packages/shared/src/id.ts`
+  - `packages/shared/src/__tests__/id.test.ts`
+  - 更新 `packages/shared/src/index.ts` 导出
+- 描述：实现 `generateId(prefix = 'gm'): string`——`<prefix>-<随机串>`，随机段基于 `crypto.getRandomValues`；纯函数无依赖。设计见 §6.4。
+- TDD 用例：默认前缀 `gm-`；自定义前缀透传；两次调用结果不同（随机性）；返回值为非空字符串。Red → Green → 重构。
+- 验证：`pnpm --filter @globalmap/shared test` 通过。
+- 依赖：无
+- 预计时间：4 分钟
+
+### 任务 37：BaseLayer/BaseGraphic 晚期绑定 + options 构造（TDD）
+
+- 文件：
+  - `packages/core/src/layer/BaseLayer.ts`
+  - `packages/core/src/graphic/BaseGraphic.ts`
+  - `packages/core/src/type/layer.ts`（新增 `BaseLayerOptions`）、`type/graphic.ts`（新增 `BaseGraphicOptions<TStyle>`）
+  - `packages/core/src/type/event.ts`（graphic 事件负载加 `layerId`）
+  - 各自 `__tests__/` 更新
+- 描述：按 §5.6——构造收 options 对象（`id` 缺省 `generateId()`）；新增 `_bind(viewer, eventBus)`；未 bind 触发依赖行为抛错；二次 bind 不同 viewer 抛错、同 viewer 幂等；options/style 的 `show` 在 bind 时同步一次。
+- TDD 用例：构造不碰 map、id 缺省自动生成/显式透传；未 bind 时 show setter 抛错；bind 后 show/emit 正常；双 map 守卫；destroy 幂等。Red → Green → 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：任务 36
+- 预计时间：7 分钟
+
+### 任务 38：layer/GraphicLayer（TDD）
+
+- 文件：
+  - `packages/core/src/layer/GraphicLayer.ts`
+  - `packages/core/src/layer/__tests__/GraphicLayer.test.ts`
+  - 更新 `packages/core/src/layer/index.ts` 导出
+- 描述：`GraphicLayer extends BaseLayer`（layer 域）——内部 `Map<string, BaseGraphic>`；`addGraphic/removeGraphic/getGraphic/hasGraphic/getAllGraphics` 链式，对 graphic 做 `_bind`；`_updateShow` 级联图元；`destroy` 级联销毁；发 `graphic:*` 事件带 `layerId`。设计见 §5.8。
+- TDD 用例：add/remove/get、三事件负载含 layerId、重复 graphic id 抛错、图层 show 级联图元、destroy 级联。Red → Green → 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：任务 37
+- 预计时间：6 分钟
+
+### 任务 39：Map3DOptions 占位 + 删除 GraphicManager + Manager 接线（TDD）
+
+- 文件：
+  - `packages/core/src/type/map.ts`（`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域 `Record` 占位；新增 `LayerInitItem`/`BasemapItem`）
+  - **删除** `packages/core/src/graphic/GraphicManager.ts` 及其测试、`map.graphic` getter
+  - `packages/core/src/map/Map3D.ts`（移除 graphic getter 与 Manager 实例；addLayer 经 LayerManager 触发 `_bind`）
+  - `packages/core/src/layer/LayerManager.ts`（`addLayer` 内部调 `layer._bind(...)`）
+  - 相关 `__tests__/`（13 getter → 12；ready 时序守护同步）
+- 描述：按 §5.9 落地构造项占位；按 §5.1/§5.8 移除全局图元 Manager；保持 12 getter 与 ready 微任务时序守护不破。
+- TDD 用例：12 getter 存在（无 graphic）；Map3DOptions 接受 layer/basemapsLayer/占位域；addLayer 触发 bind；map.destroy 级联 GraphicLayer→图元。Red → Green → 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：任务 38
+- 预计时间：6 分钟
+
+### 任务 40：BasicMap 改为空演示 + 整仓回归
+
+- 文件：`packages/example/src/views/cases/BasicMap.vue`
+- 描述：改为**空演示项目**——仅 `new Map3D` + 渲染地球 + ready 徽标，移除 Demo 图层/图元闭环逻辑；保持可启动、地球渲染、无控制台报错。
+- 验证：`pnpm --filter @globalmap/example build` 通过；`pnpm dev` 人工冒烟（地球渲染、ready 徽标、无报错）；随后整仓回归 `pnpm lint` / `prettier --check` / `pnpm -r test` / `pnpm -r build` / core dist external 复验 / `changeset status`。
+- 依赖：任务 39
+- 预计时间：5 分钟
+
+> **检查点 8**：批次 8 全绿 + BasicMap 空演示冒烟通过 → 回到 Finishing 阶段。
+
+> **移交说明**：本批次任务 36–40 为代码实现工作，**当前设计定稿阶段不执行**；移交实现方时，请其严格遵循 design.md §5.6/§5.8/§5.9 签名与本计划 TDD 要求逐任务落地，每个任务一个 commit（`feat(<scope>): task <n> <名称>`）。
+
+---
+
 ## 5. 关键风险与对策
 
 | 风险                                                     | 对策                                                                                                    |
@@ -550,4 +632,5 @@
 25 → 26 → 27 → 28 → 29 → 30     （example）
 25 → 31 → 32                    （docs）
 30,32 → 33 → 34 → 35            （验收）
+36 → 37 → 38 → 39 → 40          （批次 8 架构调整：generateId → Base 晚期绑定 → GraphicLayer → Map3DOptions+删 GraphicManager → BasicMap 空演示；设计定稿，移交实现）
 ```

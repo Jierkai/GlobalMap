@@ -1,5 +1,17 @@
 # GlobalMap Monorepo 初始化设计文档
 
+> **修订记录（2026-07-27，架构方向调整·设计定稿）**：
+>
+> 本版为**设计定稿**，供后续功能开发（移交实现方）遵循。相对骨架初版的调整：
+>
+> 1. **§5.6 Base 类改晚期绑定**：构造只收纯数据，不再构造注入 viewer/eventBus；`viewer`/`eventBus` 在 `map.addLayer()` 时经 `_bind()` 注入。动机：贴合 Mars3D 用户心智（`new TileLayer(opts)` → `map.addLayer(layer)`，创建与挂载分离），避免创建图层需探进 map 内脏；顺带使 `style.show` 初始值可在 bind 时同步。
+> 2. **§5.6 构造签名改 options 对象**：`id` 移入 `options`，不传则经 `generateId()`（shared）随机生成；构造从位置参数改为 options 对象，便于扩展。
+> 3. **新增 §5.8 GraphicLayer**：确立"图层管理图元"的 Mars3D 式归属模型；`GraphicLayer extends BaseLayer`（归 **layer 域**）管一组图元并级联显隐/销毁；图元事件由所属 GraphicLayer 发出（§5.4 EventMap 负载带 `layerId`）。
+> 4. **删除 `map.graphic`**：图元统一由 GraphicLayer 管理，移除全局 GraphicManager，`map3d` 的 13 个能力域 getter 收为 **12 个**（§5.1 同步）。
+> 5. **新增 §5.9 Map3DOptions**：`Map3D` 构造项扩展 `layer`（初始化图层集合）与 `basemapsLayer`（Cesium 底图集合）；`measure`、`control` 等未开发能力域统一先以 `Record<string, unknown>` 占位配置项，待各域开发时再具体化。
+> 6. **BasicMap 演示改为空项目**：`example` 案例页降为空壳演示，不在快速开发阶段维护 Demo 闭环逻辑，避免拖累迭代。
+> 7. **Manager 构造注入 `map3d` 保持不变**（注册表/生命周期/事件权威/跨域桥梁四角色所需）；能力实例（特效/分析/控件等）以插件形式 add 到对应 Manager 端口。
+
 ## 1. 项目背景
 
 GlobalMap 是一个基于 Cesium 二次封装的三维地图库，定位为 Mars3D 的开源替代方案。
@@ -108,8 +120,11 @@ GlobalMap/
 
 - **无 Manager 继承链**：所有 Manager 不继承任何类，直接 `class XxxManager`
 - **Base 类仅用于数据对象**：`BaseLayer`、`BaseGraphic` 只包含自身域最小公共属性，最多一层继承
-- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.graphic`
+- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.effect`、`map3d.analyse`（共 **12 个**，详见 §5.1 末注）
 - **Manager 间通信**：核心数据流直接调用 + 事件通知，扩展点纯事件
+
+> **能力域清单（12 个 Manager）**：`layer` / `primitive` / `plot` / `measure` / `roam` / `effect` / `material` / `analyse` / `transform` / `control` / `resource` / `scene`。
+> 注：原 `graphic`（全局 GraphicManager）已移除——图元统一由 `GraphicLayer`（一种图层，见 §5.8）管理，不再设独立的全局图元 Manager。
 
 ### 5.2 Map3D 生命周期
 
@@ -138,9 +153,10 @@ interface EventMap {
   'layer:added': { layer: BaseLayer }
   'layer:removed': { layerId: string }
   'layer:showChanged': { layerId: string; show: boolean }
-  'graphic:added': { graphic: BaseGraphic }
-  'graphic:removed': { graphicId: string }
-  'graphic:showChanged': { graphicId: string; show: boolean }
+  // GraphicLayer 模式：图元事件由所属 GraphicLayer 发，负载带 layerId 与图层事件同构
+  'graphic:added': { layerId: string; graphic: BaseGraphic }
+  'graphic:removed': { layerId: string; graphicId: string }
+  'graphic:showChanged': { layerId: string; graphicId: string; show: boolean }
   'plot:drawEnded': { graphic: BaseGraphic }
   'measure:completed': { result: MeasureResult }
 }
@@ -170,20 +186,31 @@ interface Manager extends Disposable {
 ### 5.6 Base 类设计
 
 ```typescript
+/** 图层构造项：id 可选，缺省时经 generateId() 随机生成 */
+interface BaseLayerOptions {
+  id?: string
+  show?: boolean
+  [key: string]: unknown // 各具体图层扩展自身的构造项
+}
+
 abstract class BaseLayer implements Disposable {
   abstract readonly type: string
+  readonly id: string // 来自 options.id，缺省随机生成
   protected _show = true
   protected _destroyed = false
+  protected _viewer?: Cesium.Viewer // 晚期绑定，addLayer 时注入
+  protected _eventBus?: EventBus // 晚期绑定，addLayer 时注入
 
-  constructor(
-    public readonly id: string,
-    protected viewer: Cesium.Viewer,
-    protected eventBus: EventBus,
-  ) {}
+  constructor(options: BaseLayerOptions) {
+    this.id = options.id ?? generateId()
+  }
 
   get show(): boolean
   set show(value: boolean) // 去重检查 + _updateShow + emit
   get destroyed(): boolean
+
+  /** 内部晚期绑定：addLayer 时由 LayerManager 调用，不暴露给用户 */
+  _bind(viewer: Cesium.Viewer, eventBus: EventBus): void
 
   abstract addToMap(): void
   abstract removeFromMap(): void
@@ -193,9 +220,11 @@ abstract class BaseLayer implements Disposable {
 }
 ```
 
-- `viewer` 构造注入，非方法参数
-- `show` setter 联动实际图层可见性
-- `BaseGraphic` 同模式，泛型 `TStyle extends GraphicStyle`，style 必填
+- **晚期绑定（late binding）**：构造函数只收纯数据（options 对象），不接触 map 内部；`viewer` / `eventBus` 在 `map.addLayer()` 时由框架经 `_bind()` 注入。用户侧为 Mars3D 心智：`const layer = new TileLayer({ url }); map.addLayer(layer)`。
+- **options 对象 + id 自动生成**：构造从位置参数改为 options 对象；`id` 放入 options，缺省时经 `generateId()` 随机生成（见 §6.4，shared 提供）。`show` 亦可在 options 声明初始可见性。
+- **守卫**：`_bind` 检测到已绑定到另一 map → 抛错；未 bind 时触发依赖 `viewer`/`eventBus` 的行为（如 `show` setter 发事件）→ 抛带明确信息的错。
+- `show` setter 联动实际图层可见性；options/style 的 `show` 初始值在 `_bind` 时同步一次（解决样式声明与初始可见性一致性）。
+- `BaseGraphic` 同模式：构造收 `(options: BaseGraphicOptions<TStyle>)`，泛型 `TStyle extends GraphicStyle`，options 内含必填 `style`；`id` 同样缺省随机生成。
 
 ### 5.7 Cesium 静态资源方案
 
@@ -206,6 +235,55 @@ abstract class BaseLayer implements Disposable {
 - 文档提供 Webpack `copy-webpack-plugin` 方案指引
 
 注：Cesium 实际在首次创建 Worker / 加载资源时才读 `CESIUM_BASE_URL`，非模块加载时，因此构造函数内设置通常安全。如遇边缘场景，可提供独立 `setCesiumBaseUrl()` 函数供用户提前调用。
+
+### 5.8 GraphicLayer：图层管理图元
+
+Mars3D 式归属模型——图元不游离于全局，而是归属某个图层。`GraphicLayer` 归属 **layer 域**（`packages/core/src/layer/GraphicLayer.ts`），它本质是一种"装图元的图层"。
+
+- `GraphicLayer extends BaseLayer`，是一种图层，内部持有一组 `BaseGraphic`。
+- API：`addGraphic(graphic)` / `removeGraphic(id)` / `getGraphic(id)` / `hasGraphic(id)` / `getAllGraphics()`，方法返回 `this` 链式；内部对 graphic 做 `_bind`。
+- **级联**：`GraphicLayer.show = false` → 组内全部图元 `_updateShow(false)`；`GraphicLayer.destroy()` → 级联销毁组内图元。
+- **事件**：图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 经 eventBus 发出，负载带 `layerId`，与 `layer:*` 事件同构。
+- **无全局 GraphicManager**：图元统一由 GraphicLayer 管理，**删除 `map.graphic`**；`map3d` 不再提供全局图元 Manager/门面（§5.1 能力域收为 12 个）。跨图层的图元检索如需支持，后续在 layer 域以只读聚合形式补充，不单设 Manager。
+
+### 5.9 Map3DOptions 与初始化配置
+
+`Map3D` 构造项除 `container` / `cesiumBaseUrl` / `viewerOptions` 外，扩展初始化配置；未开发能力域先以 `Record<string, unknown>` 占位，待各域开发时再具体化为强类型。
+
+```typescript
+interface Map3DOptions {
+  container: string | HTMLElement
+  cesiumBaseUrl: string
+  viewerOptions?: Record<string, unknown>
+
+  /** 初始化图层集合：构造完成后按序 addLayer */
+  layer?: LayerInitItem[]
+  /** Cesium 底图集合：作为 baseLayerPicker 的影像源列表，首项为默认底图 */
+  basemapsLayer?: BasemapItem[]
+
+  // —— 以下为未开发能力域的占位配置项，先以 Record 占位 ——
+  primitive?: Record<string, unknown>
+  plot?: Record<string, unknown>
+  measure?: Record<string, unknown> // 对齐 Mars3D 的 thing 类（量算/分析实例集合）
+  roam?: Record<string, unknown>
+  effect?: Record<string, unknown>
+  material?: Record<string, unknown>
+  analyse?: Record<string, unknown>
+  transform?: Record<string, unknown>
+  control?: Record<string, unknown>
+  resource?: Record<string, unknown>
+  scene?: Record<string, unknown>
+}
+
+/** 初始化图层项：图层未开发阶段先用 Record 占位，后续具体化为判别联合（按 type 区分图层种类） */
+type LayerInitItem = Record<string, unknown>
+
+/** 底图项：影像源配置（名称/类型/url/层级等），先用 Record 占位 */
+type BasemapItem = Record<string, unknown>
+```
+
+- **占位原则**：`layer`/`basemapsLayer` 是骨架后首个开发域（图层），其元素类型先 `Record` 占位、图层开发时具体化；其余能力域的占位配置项同理——先声明 key 让 `Map3DOptions` 形状稳定，避免后续每开一个域就改构造签名。
+- **插件式能力**：能力实例（某次测量、某条通视、某个控件）在对应域开发后，以 `map.<domain>.add(instance)` 形式挂到 Manager 端口；`measure` 域对齐 Mars3D 的 `thing` 类语义。
 
 ## 6. 工程化配置
 
@@ -280,6 +358,22 @@ abstract class BaseLayer implements Disposable {
   "@globalmap/shared": "workspace:*"
 }
 ```
+
+### 6.4 shared 工具：generateId
+
+`@globalmap/shared` 提供纯函数 `generateId()`，供 Base 类在 `options.id` 缺省时生成随机 id（见 §5.6）。
+
+```typescript
+/**
+ * 生成随机 id：`<prefix>-<随机串>`。
+ * 随机段基于 crypto.getRandomValues（浏览器/Node 18+ 均可用），不依赖 Cesium。
+ */
+export function generateId(prefix = 'gm'): string
+```
+
+- 纯函数、无依赖、可复用，归 shared（测试用 node 环境）。
+- 默认前缀 `'gm'`；各域可传语义化前缀（如 `generateId('layer')`、`generateId('graphic')`）提升日志可读性。
+- 碰撞风险在单 map 场景可忽略；`LayerManager.addLayer` 的重复 id 抛错仍是兜底防线。
 
 ## 7. 测试策略
 
