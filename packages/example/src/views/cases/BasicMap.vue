@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import {
+  ImageryLayer,
+  OpenStreetMapImageryProvider,
+  ProviderViewModel,
+  UrlTemplateImageryProvider,
+} from 'cesium'
 import { Map3D, BaseLayer, BaseGraphic } from '@globalmap/core'
 
 /** 内存演示图层：不操作真实 Cesium 实体，仅演示生命周期与事件流 */
@@ -52,12 +58,47 @@ function log(message: string): void {
 }
 
 onMounted(() => {
+  const cesiumBaseUrl = import.meta.env.BASE_URL + 'cesium'
+  // ArcGIS 影像瓦片模板直连：不走 ArcGisMapServerImageryProvider.fromUrl，
+  // 避免其 MapServer 元数据请求（本网络下该端点访问不稳定会抛 RuntimeError）。
+  const arcgisTileUrl =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+
+  // 当前网络无法访问 api.cesium.com：Cesium 默认影像列表基于 ion 资产，
+  // baseLayerPicker 初始化会请求 /v1/assets/2/endpoint 导致 RequestErrorEvent 且地球无影像。
+  // 这里自定义非 ion 影像列表（ArcGIS / OSM 直连），默认选中第一项，进入页面即显示瓦片。
+  const imageryViewModels = [
+    new ProviderViewModel({
+      name: 'ArcGIS World Imagery',
+      iconUrl: `${cesiumBaseUrl}/Widgets/Images/ImageryProviders/ArcGisMapServiceWorldImagery.png`,
+      tooltip: 'ArcGIS 在线影像（瓦片直连，不依赖 ion）',
+      creationFunction: () =>
+        new UrlTemplateImageryProvider({ url: arcgisTileUrl, credit: 'Esri', maximumLevel: 18 }),
+    }),
+    new ProviderViewModel({
+      name: 'OpenStreetMap',
+      iconUrl: `${cesiumBaseUrl}/Widgets/Images/ImageryProviders/openStreetMap.png`,
+      tooltip: 'OpenStreetMap 在线地图（不依赖 ion）',
+      creationFunction: () =>
+        new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
+    }),
+  ]
+
   map = new Map3D({
     container: 'map-container',
-    cesiumBaseUrl: import.meta.env.BASE_URL + 'cesium',
+    cesiumBaseUrl,
     // 本案例不做实体点选：禁用 InfoBox，消除其沙箱 iframe 的 Chrome 拦截提示；
-    // 当前网络无法访问 api.cesium.com：关闭默认 ion 在线影像（蓝色椭球照样验证渲染）
-    viewerOptions: { infoBox: false, baseLayer: false },
+    // 默认 ion 地理编码在本网络不可用：禁用 geocoder；
+    // 初始 baseLayer 直接挂 ArcGIS 影像（同步构造，无任何元数据请求）。
+    viewerOptions: {
+      infoBox: false,
+      geocoder: false,
+      baseLayer: new ImageryLayer(
+        new UrlTemplateImageryProvider({ url: arcgisTileUrl, credit: 'Esri', maximumLevel: 18 }),
+      ),
+      imageryProviderViewModels: imageryViewModels,
+      selectedImageryProviderViewModel: imageryViewModels[0],
+    },
   })
   const { eventBus } = map
 
