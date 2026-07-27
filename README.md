@@ -87,9 +87,9 @@ pnpm changeset      # 变更集（发版流程：changeset → version → publi
 - [x] BasicMap 端到端冒烟通过（2026-07-27）：`map3d:ready` 徽标、图层/图元增删显隐事件流全部正确；无 ion 网络环境下影像源方案落地（见 §6）
 - [x] **Code Review 完成**（2026-07-27）：按 Superpowers SDD 输出 `.superpowers/sdd/review.md`（0 Critical / 1 Major / 8 Minor）；唯一 Major（core/shared 缺 `files: ["dist"]`）已修复（commit `c4634e6`/`eef06bb`）
 - [x] **设计定稿**（2026-07-27）：架构方向调整定稿——Base 类晚期绑定 + options 构造（id 缺省 generateId）、图元归 GraphicLayer（删除全局 GraphicManager，13→12 Manager）、Map3DOptions 扩展 layer/basemapsLayer 及各域 Record 占位、BasicMap 改空演示、shared 新增 generateId。定稿见 design.md 顶部修订记录与 §5.6/§5.8/§5.9/§6.4
-- [ ] **批次 8 架构调整（移交实现）**：按 plan.md §4.1 任务 36–40 走 TDD 落地（generateId → Base 晚期绑定 → GraphicLayer → Map3DOptions+删 GraphicManager → BasicMap 空演示 + 回归）
+- [x] **批次 8 架构调整**（2026-07-27）：任务 36–40 全部完成——generateId（shared）→ Base 晚期绑定 + options 构造 → GraphicLayer（layer 域，级联显隐/销毁，graphic:* 事件带 layerId）→ 删除全局 GraphicManager（13→12 getter）+ Map3DOptions 占位接线 → BasicMap 改空演示 + 整仓回归。155 测试全绿、4 包构建通过、core dist external cesium 0 泄漏
 - [ ] **Finishing 阶段**：收尾验收
-- [ ] **功能域开发（待规划）**：12 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer 与 layer/basemapsLayer 初始化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
+- [ ] **功能域开发（待规划）**：12 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer 与 layer/basemapsLayer 初始化集合具体化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
 
 ## 6. 环境坑位（勿踩）
 
