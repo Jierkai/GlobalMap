@@ -69,7 +69,8 @@ export abstract class BaseGraphic<
 
   abstract addToMap(): void
   abstract removeFromMap(): void
-  protected abstract _updateShow(show: boolean): void
+  /** 内部：同步实际可见性。供 GraphicLayer 级联调用（下划线约定 internal，跨类访问需 public）。 */
+  abstract _updateShow(show: boolean): void
 
   destroy(): void {
     if (this._destroyed) return
