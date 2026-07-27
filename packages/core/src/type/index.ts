@@ -1,4 +1,5 @@
 export type { Disposable, Manager } from './disposable'
 export type { EventMap, BaseLayer } from './event'
-export type { Map3DOptions } from './map'
-export type { BaseGraphic, GraphicStyle, MeasureResult } from './graphic'
+export type { Map3DOptions, LayerInitItem, BasemapItem } from './map'
+export type { BaseGraphic, GraphicStyle, MeasureResult, BaseGraphicOptions } from './graphic'
+export type { BaseLayerOptions } from './layer'

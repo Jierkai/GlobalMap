@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest'
-import { Viewer } from 'cesium'
 import { Map3D } from '../../map'
 import { BaseLayer } from '../BaseLayer'
 import { LayerManager } from '../LayerManager'
@@ -16,13 +15,13 @@ class FakeLayer extends BaseLayer {
 function setup() {
   const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
   const manager = new LayerManager(map)
-  const viewer = map.viewer as Viewer
-  const makeLayer = (id: string) => new FakeLayer(id, viewer, map.eventBus)
+  // 晚期绑定：构造只收 options，viewer/eventBus 在 addLayer 时由 LayerManager 经 _bind 注入
+  const makeLayer = (id: string) => new FakeLayer({ id })
   return { map, manager, makeLayer }
 }
 
 describe('LayerManager', () => {
-  it('addLayer 调用 layer.addToMap 并 emit layer:added，返回 this 链式', () => {
+  it('addLayer 经 _bind 注入 viewer/eventBus、调用 layer.addToMap 并 emit layer:added，返回 this 链式', () => {
     const { map, manager, makeLayer } = setup()
     const handler = vi.fn()
     map.eventBus.on('layer:added', handler)

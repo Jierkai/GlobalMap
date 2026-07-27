@@ -21,6 +21,9 @@
   "peerDependencies": {
     "cesium": ">=1.120.0 <1.124.0"
   },
+  "dependencies": {
+    "@globalmap/shared": "workspace:*"
+  },
   "devDependencies": {
     "cesium": "1.120.0",
     "jsdom": "^24.1.0",

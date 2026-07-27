@@ -32,6 +32,8 @@ export class LayerManager implements Manager {
       throw new Error(`[LayerManager] layer id 重复: "${layer.id}"`)
     }
     this._layers.set(layer.id, layer)
+    // 晚期绑定：注入 viewer/eventBus（设计 §5.6），随后才允许 addToMap
+    layer._bind(this.map3d.viewer, this.map3d.eventBus)
     layer.addToMap()
     this.map3d.eventBus.emit('layer:added', { layer })
     return this

@@ -1,6 +1,5 @@
 import { Viewer } from 'cesium'
 import { EventBus } from '../event'
-import { GraphicManager } from '../graphic'
 import { LayerManager } from '../layer'
 import { PrimitiveManager } from '../primitive'
 import { PlotManager } from '../plot'
@@ -20,20 +19,21 @@ import type { Disposable, Map3DOptions } from '../type'
  * Map3D 组合根（设计文档 §5.1 / §5.2）。
  *
  * 构造函数两阶段：
- * ① `setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 13 个 Manager；
+ * ① `setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 12 个 Manager；
  * ② `init()` 逐个调用 Manager.init() 建立跨域关联。
  * 全部初始化完成后才 emit `map3d:ready`——外部消费者判断地图就绪的唯一信号，
- * 不得因 Manager 增多而把 ready 提前（时序由测试守护）。
+ * 不得因 Manager 增减而把 ready 提前（时序由测试守护）。
  *
  * 销毁采用"显式注册 + 逆序销毁"：eventBus 最先创建、最后销毁；
  * 每个销毁回调 try-catch 兜底，单个失败不阻断后续；
  * 全部销毁动作完成后、eventBus 自身销毁前 emit `map3d:destroyed`。
+ *
+ * 注：图元统一由 GraphicLayer（layer 域，§5.8）管理，不再设全局 GraphicManager（13→12）。
  */
 export class Map3D implements Disposable {
   private _viewer: Viewer
   private _eventBus: EventBus
   private _layer: LayerManager
-  private _graphic: GraphicManager
   private _primitive: PrimitiveManager
   private _plot: PlotManager
   private _measure: MeasureManager
@@ -53,9 +53,8 @@ export class Map3D implements Disposable {
     setCesiumBaseUrl(options.cesiumBaseUrl)
     this._viewer = new Viewer(options.container, options.viewerOptions)
     this._eventBus = new EventBus()
-    // 阶段①：按固定顺序实例化全部 13 个 Manager
+    // 阶段①：按固定顺序实例化全部 12 个 Manager（图元归 GraphicLayer，无全局 GraphicManager）
     this._layer = new LayerManager(this)
-    this._graphic = new GraphicManager(this)
     this._primitive = new PrimitiveManager(this)
     this._plot = new PlotManager(this)
     this._measure = new MeasureManager(this)
@@ -70,7 +69,6 @@ export class Map3D implements Disposable {
     // 注册销毁栈（逆序销毁时 Manager 先于 Viewer）
     this._disposers.push(() => this._viewer.destroy())
     this._disposers.push(() => this._layer.destroy())
-    this._disposers.push(() => this._graphic.destroy())
     this._disposers.push(() => this._primitive.destroy())
     this._disposers.push(() => this._plot.destroy())
     this._disposers.push(() => this._measure.destroy())
@@ -95,7 +93,6 @@ export class Map3D implements Disposable {
   /** 建立跨域关联：全部 Manager 实例化后逐个 init */
   private init(): void {
     this._layer.init()
-    this._graphic.init()
     this._primitive.init()
     this._plot.init()
     this._measure.init()
@@ -119,10 +116,6 @@ export class Map3D implements Disposable {
 
   get layer(): LayerManager {
     return this._layer
-  }
-
-  get graphic(): GraphicManager {
-    return this._graphic
   }
 
   get primitive(): PrimitiveManager {
