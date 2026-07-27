@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Map3D } from '../Map3D'
 import { EventBus } from '../../event'
 import { LayerManager } from '../../layer/LayerManager'
+import { GraphicLayer } from '../../layer/GraphicLayer'
+import { BaseGraphic } from '../../graphic'
 import { PrimitiveManager } from '../../primitive/PrimitiveManager'
 import { PlotManager } from '../../plot/PlotManager'
 import { MeasureManager } from '../../measure/MeasureManager'
@@ -13,8 +15,18 @@ import { TransformManager } from '../../transform/TransformManager'
 import { ControlManager } from '../../control/ControlManager'
 import { ResourceManager } from '../../resource/ResourceManager'
 import { SceneManager } from '../../scene/SceneManager'
+import type { GraphicStyle } from '../../type'
 
 vi.mock('cesium')
+
+/** 最小图元子类（供 GraphicLayer 级联销毁测试） */
+class FakeGraphic extends BaseGraphic {
+  readonly type = 'fake'
+  addToMap = vi.fn()
+  removeFromMap = vi.fn()
+  _updateShow = vi.fn()
+}
+const fakeStyle: GraphicStyle = {}
 
 /** 12 个域 Manager 的名称 → 原型映射（供 init 时序断言；图元归 GraphicLayer，无全局 GraphicManager） */
 function map3dManagerProtos() {
@@ -188,6 +200,43 @@ describe('Map3D', () => {
     }
     // 图元不再有全局 Manager
     expect((map as unknown as { graphic?: unknown }).graphic).toBeUndefined()
+  })
+
+  it('Map3DOptions 接受 layer/basemapsLayer 及各域占位配置（类型占位，运行时消费待图层域开发）', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      cesiumBaseUrl: '/cesium',
+      layer: [{ type: 'graphic' }],
+      basemapsLayer: [{ name: 'arcgis' }],
+      primitive: { foo: 1 },
+      plot: { bar: true },
+      measure: { things: [] },
+      roam: { speed: 10 },
+      effect: { bloom: false },
+      material: { water: true },
+      analyse: { viewshed: false },
+      transform: { mode: 'cartesian' },
+      control: { widgets: true },
+      resource: { assets: [] },
+      scene: { sky: false },
+    })
+    expect(map.destroyed).toBe(false)
+    map.destroy()
+    expect(map.destroyed).toBe(true)
+  })
+
+  it('map.destroy 级联销毁 GraphicLayer 及其组内图元（layer→graphic 级联）', () => {
+    const map = createMap()
+    const layer = new GraphicLayer({ id: 'gl-1' })
+    const graphic = new FakeGraphic({ id: 'g1', style: fakeStyle })
+    map.layer.addLayer(layer)
+    layer.addGraphic(graphic)
+    expect(map.layer.hasLayer('gl-1')).toBe(true)
+    expect(layer.hasGraphic('g1')).toBe(true)
+    map.destroy()
+    expect(map.destroyed).toBe(true)
+    expect(layer.destroyed).toBe(true)
+    expect(graphic.destroyed).toBe(true)
   })
 
   it('map3d:ready 时序守护：触发时全部 Manager 的 init 均已执行', async () => {
