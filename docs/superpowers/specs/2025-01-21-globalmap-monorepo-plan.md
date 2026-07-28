@@ -623,7 +623,7 @@
 
 ---
 
-## 4.2 批次 8 补充：删除全局 PrimitiveManager（2026-07-27 二轮决策，待实现）
+## 4.2 批次 8 补充：删除全局 PrimitiveManager（2026-07-27 二轮决策）✅ 已完成
 
 > 背景：批次 8 落地后评审发现——按"图层/图元的管理一律归 layer 域"原则，primitive 与已删的 graphic 同理，不应保留全局 Manager（Mars3D 中底层图元由 `PrimitiveLayer` 持有）。design.md 已同步（§5.1 能力域收为 **11 个**、§5.9 无 primitive 占位）。
 
@@ -641,11 +641,11 @@
 - 依赖：任务 40（批次 8 已完成）
 - 预计时间：4 分钟
 
-> **检查点 8.1**：任务 41 全绿 + 整仓回归通过 → 回到 Finishing 阶段。
+> **检查点 8.1**：任务 41 全绿 + 整仓回归通过 ✅ 已达成（commit 7ab07dc）。
 
 ---
 
-## 4.3 批次 8 补充 2：cesiumBaseUrl 删除 + 零配置自动识别（2026-07-28 决策，待实现）
+## 4.3 批次 8 补充 2：cesiumBaseUrl 删除 + 零配置自动识别（2026-07-28 决策）✅ 已完成
 
 > 背景：cesiumBaseUrl 是工程问题不该甩给消费者--vite-plugin-cesium 等打包器插件本就会自动注入 window.CESIUM_BASE_URL（已读源码验证），消费者显式填值纯属冗余。design.md §5.7 已改为"零配置自动识别"，§5.9 删除 cesiumBaseUrl 构造项，setCesiumBaseUrl 函数亦删除。工程只服务 npm 依赖与 lib 两种场景。
 
@@ -676,11 +676,11 @@
 - 依赖：任务 42
 - 预计时间：4 分钟
 
-> **检查点 8.2**：任务 42/43 全绿 + BasicMap 零配置冒烟通过 -> 回到 Finishing 阶段。
+> **检查点 8.2**：任务 42/43 全绿 + BasicMap 零配置冒烟通过 ✅ 已达成（commit 9a6b714/fb0991a）。
 
 ---
 
-## 4.4 批次 8 补充 3：删除 material/transform/resource 三个 Manager（2026-07-28 二轮审计，待实现）
+## 4.4 批次 8 补充 3：删除 material/transform/resource 三个 Manager（2026-07-28 二轮审计）✅ 已完成
 
 > 背景：Manager 存在的充要条件是“管理有生命周期的能力实例且依赖 viewer 运行时”。经审计 material/transform/resource 三者均不满足：材质是图元 style 属性、坐标转换是纯计算、资源加载分散到各域。design.md §5.1 能力域收为 **8 个** Manager，§5.9 删除其占位。
 
@@ -700,7 +700,7 @@
 - 依赖：任务 41（已完成）
 - 预计时间：4 分钟
 
-> **检查点 8.3**：任务 44 全绿 + 整仓回归通过 -> 回到 Finishing 阶段。
+> **检查点 8.3**：任务 44 全绿 + 整仓回归通过 ✅ 已达成（commit d556c39）。
 
 ---
 
