@@ -11,14 +11,14 @@ import { TransformManager } from '../transform'
 import { ControlManager } from '../control'
 import { ResourceManager } from '../resource'
 import { SceneManager } from '../scene'
-import { setCesiumBaseUrl } from '../util'
+import { resolveCesiumBaseUrl } from '../util'
 import type { Disposable, Map3DOptions } from '../type'
 
 /**
  * Map3D 组合根（设计文档 §5.1 / §5.2）。
  *
  * 构造函数两阶段：
- * ① `setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 12 个 Manager；
+ * ① `resolveCesiumBaseUrl()`（自动识别 §5.7）-> 创建 `Cesium.Viewer` -> 实例化 `EventBus` -> 实例化全部 11 个 Manager；
  * ② `init()` 逐个调用 Manager.init() 建立跨域关联。
  * 全部初始化完成后才 emit `map3d:ready`——外部消费者判断地图就绪的唯一信号，
  * 不得因 Manager 增减而把 ready 提前（时序由测试守护）。
@@ -48,7 +48,8 @@ export class Map3D implements Disposable {
   private _disposers: Array<() => void> = []
 
   constructor(options: Map3DOptions) {
-    setCesiumBaseUrl(options.cesiumBaseUrl)
+    // Cesium 静态资源自动识别（设计文档 §5.7）：打包器插件注入 > script 探测 > /cesium 兜底
+    ;(window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = resolveCesiumBaseUrl()
     this._viewer = new Viewer(options.container, options.viewerOptions)
     this._eventBus = new EventBus()
     // 阶段①：按固定顺序实例化全部 11 个 Manager（图元归 GraphicLayer，底层图元归 PrimitiveLayer，无全局 Manager）

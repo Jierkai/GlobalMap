@@ -12,6 +12,7 @@
 > 6. **新增 §5.9 Map3DOptions**：`Map3D` 构造项扩展 `layer`（初始化图层集合）与 `basemapsLayer`（Cesium 底图集合）；`measure`、`control` 等未开发能力域统一先以 `Record<string, unknown>` 占位配置项（primitive 不再单设，走 `layer` 集合的 type 判别），待各域开发时再具体化。
 > 7. **BasicMap 演示改为空项目**：`example` 案例页降为空壳演示，不在快速开发阶段维护 Demo 闭环逻辑，避免拖累迭代。
 > 8. **Manager 构造注入 `map3d` 保持不变**（注册表/生命周期/事件权威/跨域桥梁四角色所需）；能力实例（特效/分析/控件等）以插件形式 add 到对应 Manager 端口。
+> 9. **`cesiumBaseUrl` 直接删除，零配置自动识别**（2026-07-28）：`Map3DOptions` 不再暴露 `cesiumBaseUrl`——库内部按"npm 依赖场景（打包器插件已设 `window.CESIUM_BASE_URL`）→ lib 场景（script 标签探测）→ 约定值 `/cesium` + dev 警告"自动识别，工程只服务 npm 依赖与 lib 两种消费场景，不支持自定义路径等边缘场景。动机：静态资源部署是工程问题，不该让消费者感知。
 
 ## 1. 项目背景
 
@@ -227,15 +228,29 @@ abstract class BaseLayer implements Disposable {
 - `show` setter 联动实际图层可见性；options/style 的 `show` 初始值在 `_bind` 时同步一次（解决样式声明与初始可见性一致性）。
 - `BaseGraphic` 同模式：构造收 `(options: BaseGraphicOptions<TStyle>)`，泛型 `TStyle extends GraphicStyle`，options 内含必填 `style`；`id` 同样缺省随机生成。
 
-### 5.7 Cesium 静态资源方案
+### 5.7 Cesium 静态资源方案（零配置，自动识别）
 
-- `Map3D` 构造函数要求传入 `cesiumBaseUrl: string`
-- 初始化时执行 `window.CESIUM_BASE_URL = cesiumBaseUrl`
-- `core` 构建时外置 `cesium`，不打包
-- `example` 使用 `vite-plugin-cesium` 自动处理静态资源
-- 文档提供 Webpack `copy-webpack-plugin` 方案指引
+`Map3DOptions` **不暴露 `cesiumBaseUrl`**；库内部自动识别 `CESIUM_BASE_URL`，工程只服务 npm 依赖与 lib 两种消费场景，不支持自定义路径等边缘场景。
 
-注：Cesium 实际在首次创建 Worker / 加载资源时才读 `CESIUM_BASE_URL`，非模块加载时，因此构造函数内设置通常安全。如遇边缘场景，可提供独立 `setCesiumBaseUrl()` 函数供用户提前调用。
+```typescript
+/** 自动识别：全局已设 > script 标签探测 > 约定值 + dev 警告 */
+function resolveCesiumBaseUrl(): string {
+  if (window.CESIUM_BASE_URL) return window.CESIUM_BASE_URL // ① npm 依赖：打包器插件已设
+  const detected = detectFromScriptTag() // ② lib 场景：Cesium.js 的 src 推导目录
+  if (detected) return detected
+  console.warn(/* 未检测到，回退约定值，404 时引导装插件 */)
+  return '/cesium' // ③ 约定值兜底
+}
+```
+
+- **npm 依赖场景**（推荐）：消费者 `npm install cesium` + 装打包器插件，插件自动注入全局值，探测①命中。
+  - Vite：`vite-plugin-cesium`（构建时 intro 注入 `window.CESIUM_BASE_URL`、dev 中间件 serve 静态目录、build 复制资源到 `cesium/`）；
+  - Webpack：`copy-webpack-plugin` 复制静态资源 + `webpack.DefinePlugin({ CESIUM_BASE_URL: JSON.stringify('/cesium') })`；
+- **lib 场景**：Cesium 拷入 public 目录 + `<script src=".../Cesium.js">`，探测②从 script 标签的 src 推导目录。
+- `core` 构建时外置 `cesium`，不打包；`example` 用 `vite-plugin-cesium`，BasicMap 不传 `cesiumBaseUrl`（零配置验证）。
+- `setCesiumBaseUrl()` **删除**--不再需要边缘场景函数。
+
+注：Cesium 实际在首次创建 Worker / 加载资源时才读 `CESIUM_BASE_URL`，非模块加载时，因此构造时识别通常安全。
 
 ### 5.8 GraphicLayer：图层管理图元
 
@@ -249,12 +264,11 @@ Mars3D 式归属模型——图元不游离于全局，而是归属某个图层�
 
 ### 5.9 Map3DOptions 与初始化配置
 
-`Map3D` 构造项除 `container` / `cesiumBaseUrl` / `viewerOptions` 外，扩展初始化配置；未开发能力域先以 `Record<string, unknown>` 占位，待各域开发时再具体化为强类型。
+`Map3D` 构造项含 `container` / `viewerOptions` 及初始化配置；`cesiumBaseUrl` 不暴露（§5.7 自动识别）；未开发能力域先以 `Record<string, unknown>` 占位，待各域开发时再具体化为强类型。
 
 ```typescript
 interface Map3DOptions {
   container: string | HTMLElement
-  cesiumBaseUrl: string
   viewerOptions?: Record<string, unknown>
 
   /** 初始化图层集合：构造完成后按序 addLayer */

@@ -54,9 +54,9 @@ type/       集中接口定义    util/       core 内部工具（依赖 Cesium�
 
 ## 3. 核心架构与契约（修改代码前必读）
 
-Map3D 构造时序：`setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 **11 个 Manager**（layer / plot / measure / roam / effect / material / analyse / transform / control / resource / scene）→ 逐个 `Manager.init()` 建立跨域关联。
+Map3D 构造时序：`resolveCesiumBaseUrl()`（自动识别）-> 创建 `Cesium.Viewer` -> 实例化 `EventBus` -> 实例化全部 **11 个 Manager**（layer / plot / measure / roam / effect / material / analyse / transform / control / resource / scene）-> 逐个 `Manager.init()` 建立跨域关联。
 
-> **2026-07-27 设计定稿**：Base 类改**晚期绑定**、图元归 **GraphicLayer** 管理（删除全局 Graphic/Primitive Manager——原则：**图层/图元的管理一律归 layer 域，Manager 只管能力实例不管图元**）、构造改 **options 对象**（id 缺省 `generateId()`）、`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域占位。以下为定稿后的契约。
+> **2026-07-27 设计定稿**：Base 类改**晚期绑定**、图元归 **GraphicLayer** 管理（删除全局 Graphic/Primitive Manager——原则：**图层/图元的管理一律归 layer 域，Manager 只管能力实例不管图元**）、构造改 **options 对象**（id 缺省 `generateId()`）、`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域占位。**2026-07-28 追加**：`cesiumBaseUrl` **删除**，零配置自动识别。以下为定稿后的契约。
 
 以下契约已有测试守护，**破坏即测试红**：
 
@@ -65,7 +65,8 @@ Map3D 构造时序：`setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化
 - **EventBus**：`on` 返回取消订阅函数；`void` 负载事件无参 emit；destroy 幂等，销毁后 emit 静默。
 - **BaseLayer / BaseGraphic（晚期绑定）**：构造只收 **options 对象**（`id?` 缺省经 `generateId()` 随机生成、`show?` 声明初始可见性；BaseGraphic 的 options 内含必填 `style`，泛型 `<TStyle extends GraphicStyle>`）；不接触 map 内部。`viewer`/`eventBus` 在 `addLayer`/`addGraphic` 时由框架经 `_bind()` 注入。守卫：重复 bind 到不同 map 抛错；未 bind 触发依赖行为抛错。`show` setter 去重 → `_updateShow` → emit `*:showChanged`；destroy 幂等调 `removeFromMap`。
 - **GraphicLayer（layer 域）**：`GraphicLayer extends BaseLayer`，是一种"装图元的图层"。`addGraphic/removeGraphic/getGraphic/hasGraphic/getAllGraphics` 链式；图层 `show`/`destroy` **级联**组内图元；图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 发出，负载带 `layerId`。**无 `map.graphic`**。
-- **Map3DOptions 初始化配置**：除 `container`/`cesiumBaseUrl`/`viewerOptions` 外，支持 `layer`（初始化图层集合）、`basemapsLayer`（Cesium 底图集合，首项默认）；`plot`/`measure`/`roam`/`effect`/`material`/`analyse`/`transform`/`control`/`resource`/`scene` 等未开发域先以 `Record<string, unknown>` 占位（`measure` 对齐 Mars3D thing 类；无 primitive 占位，Primitive 系图元走 `layer` 集合），各域开发时再具体化。
+- **Cesium 静态资源（零配置）**：`Map3DOptions` **不暴露 `cesiumBaseUrl`**，库内部自动识别--① `window.CESIUM_BASE_URL` 已设（npm 依赖：vite-plugin-cesium / DefinePlugin 自动注入） > ② script 标签探测（lib 场景：Cesium.js 的 src 推导） > ③ 约定值 `/cesium` + dev 警告。npm 依赖装插件即零配置，lib 场景 script 引入即零配置。`setCesiumBaseUrl()` 已删除。
+- **Map3DOptions 初始化配置**：含 `container`/`viewerOptions`，支持 `layer`（初始化图层集合）、`basemapsLayer`（Cesium 底图集合，首项默认）；`plot`/`measure`/`roam`/`effect`/`material`/`analyse`/`transform`/`control`/`resource`/`scene` 等未开发域先以 `Record<string, unknown>` 占位（`measure` 对齐 Mars3D thing 类；无 primitive 占位，Primitive 系图元走 `layer` 集合），各域开发时再具体化。
 - **Manager**：构造仅收 `(map3d, options?)`；方法返回 `this` 支持链式；`init()` 不暴露给用户。
 
 ## 4. 快速开始
@@ -89,6 +90,7 @@ pnpm changeset      # 变更集（发版流程：changeset → version → publi
 - [x] **设计定稿**（2026-07-27）：架构方向调整定稿——Base 类晚期绑定 + options 构造（id 缺省 generateId）、图元归 GraphicLayer（删除全局 GraphicManager）、Map3DOptions 扩展 layer/basemapsLayer 及各域 Record 占位、BasicMap 改空演示、shared 新增 generateId。定稿见 design.md 顶部修订记录与 §5.6/§5.8/§5.9/§6.4
 - [x] **批次 8 架构调整**（2026-07-27）：任务 36–40 全部完成——generateId（shared）→ Base 晚期绑定 + options 构造 → GraphicLayer（layer 域，级联显隐/销毁，graphic:\* 事件带 layerId）→ 删除全局 GraphicManager（13→12 getter）+ Map3DOptions 占位接线 → BasicMap 改空演示 + 整仓回归。159 测试全绿（shared 47 + core 112）、4 包构建通过、core dist external cesium 0 泄漏
 - [ ] **批次 8 补充：删除全局 PrimitiveManager**（2026-07-27 二轮决策，plan.md §4.2 任务 41）：primitive 与 graphic 同理——**图层/图元的管理一律归 layer 域，Manager 只管能力实例不管图元**；删后 12→11 getter，`primitive/` 目录保留（未来放 Primitive 系图元实现，由 PrimitiveLayer 持有）
+- [ ] **批次 8 补充 2：cesiumBaseUrl 删除 + 零配置自动识别**（2026-07-28 决策，plan.md §4.3 任务 42–43）：core 实现 `resolveCesiumBaseUrl()` 自动识别（全局已设 > script 探测 > 约定值 + 警告），删除 `setCesiumBaseUrl`；BasicMap 零配置验证，docs 改写为“零配置”
 - [ ] **Finishing 阶段**：收尾验收
 - [ ] **功能域开发（待规划）**：11 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer/PrimitiveLayer 与 layer/basemapsLayer 初始化集合具体化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
 

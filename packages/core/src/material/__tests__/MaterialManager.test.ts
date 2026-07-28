@@ -6,17 +6,17 @@ vi.mock('cesium')
 
 describe('MaterialManager（空壳契约）', () => {
   it('map.material getter 存在且为 MaterialManager 实例', () => {
-    const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
+    const map = new Map3D({ container: 'map-container' })
     expect(map.material).toBeInstanceOf(MaterialManager)
   })
 
   it('init 为空实现不报错', () => {
-    const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
+    const map = new Map3D({ container: 'map-container' })
     expect(() => map.material.init()).not.toThrow()
   })
 
   it('destroy 置 destroyed 且幂等', () => {
-    const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
+    const map = new Map3D({ container: 'map-container' })
     map.material.destroy()
     expect(map.material.destroyed).toBe(true)
     expect(() => map.material.destroy()).not.toThrow()
@@ -24,7 +24,7 @@ describe('MaterialManager（空壳契约）', () => {
   })
 
   it('map.destroy 级联销毁 manager', () => {
-    const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
+    const map = new Map3D({ container: 'map-container' })
     map.destroy()
     expect(map.material.destroyed).toBe(true)
   })

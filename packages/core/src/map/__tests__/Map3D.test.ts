@@ -44,8 +44,8 @@ function map3dManagerProtos() {
   }
 }
 
-function createMap(cesiumBaseUrl = '/cesium') {
-  return new Map3D({ container: 'map-container', cesiumBaseUrl })
+function createMap() {
+  return new Map3D({ container: 'map-container' })
 }
 
 afterEach(() => {
@@ -54,17 +54,21 @@ afterEach(() => {
 })
 
 describe('Map3D', () => {
-  it('构造时经 setCesiumBaseUrl 设置 window.CESIUM_BASE_URL', () => {
-    createMap('https://cdn.example.com/cesium/')
-    expect((window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL).toBe(
-      'https://cdn.example.com/cesium/',
-    )
+  it('构造时经 resolveCesiumBaseUrl 自动识别并设置 window.CESIUM_BASE_URL', () => {
+    // jsdom 环境无打包器插件注入、无 script 标签 -> 回退 /cesium
+    createMap()
+    expect((window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL).toBe('/cesium')
+  })
+
+  it('window.CESIUM_BASE_URL 已设时（模拟打包器插件注入）构造后保持该值', () => {
+    ;(window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = '/plugin/cesium'
+    createMap()
+    expect((window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL).toBe('/plugin/cesium')
   })
 
   it('Viewer 以 container 与 viewerOptions 创建', () => {
     const map = new Map3D({
       container: 'map-container',
-      cesiumBaseUrl: '/cesium',
       viewerOptions: { animation: false },
     })
     expect(map.viewer.container).toBe('map-container')
@@ -203,7 +207,6 @@ describe('Map3D', () => {
   it('Map3DOptions 接受 layer/basemapsLayer 及各域占位配置（类型占位，运行时消费待图层域开发）', () => {
     const map = new Map3D({
       container: 'map-container',
-      cesiumBaseUrl: '/cesium',
       layer: [{ type: 'graphic' }],
       basemapsLayer: [{ name: 'arcgis' }],
       plot: { bar: true },
@@ -222,7 +225,7 @@ describe('Map3D', () => {
     expect(map.destroyed).toBe(true)
   })
 
-  it('map.destroy 级联销毁 GraphicLayer 及其组内图元（layer→graphic 级联）', () => {
+  it('map.destroy 级联销毁 GraphicLayer 及其组内图元（layer->graphic 级联）', () => {
     const map = createMap()
     const layer = new GraphicLayer({ id: 'gl-1' })
     const graphic = new FakeGraphic({ id: 'g1', style: fakeStyle })

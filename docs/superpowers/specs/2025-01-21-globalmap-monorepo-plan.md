@@ -10,6 +10,10 @@
 > 3. 任务 19 明确 `map3d:ready` 触发时机（全部初始化完成后）并补充 TDD 用例；任务 23 增加 ready 时序守护；任务 29 示例演示 ready 订阅。
 >
 > **修订记录（2026-07-27，设计定稿）**：追加批次 8（任务 36–40）——Base 类晚期绑定 + options 构造（id 缺省 generateId）、GraphicLayer（layer 域）管理图元、删除全局 GraphicManager（13→12 getter）、Map3DOptions 扩展 layer/basemapsLayer 及各域占位配置项、BasicMap 改空演示。本批次为**设计定稿**，当前阶段不做代码开发，移交实现方按 TDD 落地。
+>
+> **修订记录（2026-07-27 二轮）**：追加 §4.2 任务 41——删除全局 PrimitiveManager（12→11 getter），primitive/ 目录降级为图元实现目录。
+>
+> **修订记录（2026-07-28）**：追加 §4.3 任务 42–43——`cesiumBaseUrl` 改可选 + `resolveCesiumBaseUrl` 自动识别探测链（design.md §5.7/§5.9 同步）；BasicMap 删显式传参做零配置验证，docs 改写为"零配置优先"。
 
 ## 0. 范围声明（YAGNI）
 
@@ -639,6 +643,41 @@
 
 ---
 
+## 4.3 批次 8 补充 2：cesiumBaseUrl 删除 + 零配置自动识别（2026-07-28 决策，待实现）
+
+> 背景：cesiumBaseUrl 是工程问题不该甩给消费者--vite-plugin-cesium 等打包器插件本就会自动注入 window.CESIUM_BASE_URL（已读源码验证），消费者显式填值纯属冗余。design.md §5.7 已改为"零配置自动识别"，§5.9 删除 cesiumBaseUrl 构造项，setCesiumBaseUrl 函数亦删除。工程只服务 npm 依赖与 lib 两种场景。
+
+### 任务 42：core resolveCesiumBaseUrl 自动识别 + 删除 setCesiumBaseUrl（TDD）
+
+- 文件：
+  - `packages/core/src/util/cesium.ts`（`setCesiumBaseUrl` 删除，改为 `resolveCesiumBaseUrl(): string` + 内部 `detectFromScriptTag()`）
+  - `packages/core/src/util/__tests__/cesium.test.ts`（用例重写）
+  - `packages/core/src/util/index.ts`（导出改为 `resolveCesiumBaseUrl`）
+  - `packages/core/src/type/map.ts`（删除 `cesiumBaseUrl` 字段）
+  - `packages/core/src/map/Map3D.ts`（构造改为 `window.CESIUM_BASE_URL = resolveCesiumBaseUrl()`）
+  - `packages/core/src/map/__tests__/Map3D.test.ts`（用例同步）
+  - `packages/core/src/index.ts`（公共出口 `setCesiumBaseUrl` -> `resolveCesiumBaseUrl`）
+- 描述：按 design.md §5.7--① `window.CESIUM_BASE_URL` 已设（npm 依赖：打包器插件注入）直接用；② script 标签探测（遍历 `document.scripts`，匹配 src 以 `Cesium.js` 结尾者，取其目录）命中用；③ 回退 `'/cesium'` 并 `console.warn`。无 explicit 参数、无 setCesiumBaseUrl。
+- TDD 用例：全局已设则用；script 探测命中推导目录；全未命中回退 /cesium 且触发 warn；Map3D 不传 cesiumBaseUrl 构造不抛错且 window.CESIUM_BASE_URL 有值。Red -> Green -> 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：无（与任务 41 相互独立，可并行）
+- 预计时间：5 分钟
+
+### 任务 43：BasicMap 零配置验证 + docs 改写 + 整仓回归
+
+- 文件：
+  - `packages/example/src/views/cases/BasicMap.vue`（删去显式 cesiumBaseUrl 传参，保留 viewerOptions 无 ion 影像配置）
+  - `packages/docs/guide/cesium-base-url.md`（改写为"零配置"：npm+Vite 装 vite-plugin-cesium 即零配置、npm+Webpack 用 copy-webpack-plugin + DefinePlugin 即零配置、lib 场景 script 引入即零配置；无 setCesiumBaseUrl 用法）
+  - `packages/docs/guide/getting-started.md`（最小示例同步去掉 cesiumBaseUrl）
+- 描述：BasicMap 作为 vite-plugin-cesium 场景的零配置活案例；docs 与代码行为一致。
+- 验证：`pnpm --filter @globalmap/example build` 通过；`pnpm dev` 人工冒烟（不传 cesiumBaseUrl，地球渲染正常、无资源 404）；整仓回归 `pnpm lint && pnpm -r test && pnpm -r build`。
+- 依赖：任务 42
+- 预计时间：4 分钟
+
+> **检查点 8.2**：任务 42/43 全绿 + BasicMap 零配置冒烟通过 -> 回到 Finishing 阶段。
+
+---
+
 ## 5. 关键风险与对策
 
 | 风险                                                     | 对策                                                                                                    |
@@ -659,4 +698,6 @@
 25 → 31 → 32                    （docs）
 30,32 → 33 → 34 → 35            （验收）
 36 → 37 → 38 → 39 → 40          （批次 8 架构调整：generateId → Base 晚期绑定 → GraphicLayer → Map3DOptions+删 GraphicManager → BasicMap 空演示；设计定稿，移交实现）
+41                            （批次 8 补充：删全局 PrimitiveManager 12→11；待实现）
+42 → 43                       （批次 8 补充 2：cesiumBaseUrl 探测链 → BasicMap 零配置 + docs 改写；待实现）
 ```

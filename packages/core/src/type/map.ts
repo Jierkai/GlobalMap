@@ -6,7 +6,6 @@
  */
 export interface Map3DOptions {
   container: string | HTMLElement
-  cesiumBaseUrl: string
   viewerOptions?: Record<string, unknown>
 
   /** 初始化图层集合：构造完成后按序 addLayer */

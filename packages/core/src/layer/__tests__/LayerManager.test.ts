@@ -13,7 +13,7 @@ class FakeLayer extends BaseLayer {
 }
 
 function setup() {
-  const map = new Map3D({ container: 'map-container', cesiumBaseUrl: '/cesium' })
+  const map = new Map3D({ container: 'map-container' })
   const manager = new LayerManager(map)
   // 晚期绑定：构造只收 options，viewer/eventBus 在 addLayer 时由 LayerManager 经 _bind 注入
   const makeLayer = (id: string) => new FakeLayer({ id })
