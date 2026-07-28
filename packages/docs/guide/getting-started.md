@@ -37,21 +37,20 @@ Cesium 静态资源路径自动识别，无需手动配置（见「Cesium 静态
 
 ## 能力域
 
-`Map3D` 实例通过 getter 暴露 11 个能力域 Manager：
+`Map3D` 实例通过 getter 暴露 8 个能力域 Manager：
 
-| getter          | 域       |
-| --------------- | -------- |
-| `map.layer`     | 图层管理 |
-| `map.plot`      | 标绘     |
-| `map.measure`   | 测量     |
-| `map.roam`      | 漫游     |
-| `map.effect`    | 特效     |
-| `map.material`  | 材质     |
-| `map.analyse`   | 空间分析 |
-| `map.transform` | 坐标转换 |
-| `map.control`   | UI 控件  |
-| `map.resource`  | 资源加载 |
-| `map.scene`     | 场景管理 |
+| getter        | 域       |
+| ------------- | -------- |
+| `map.layer`   | 图层管理 |
+| `map.plot`    | 标绘     |
+| `map.measure` | 测量     |
+| `map.roam`    | 漫游     |
+| `map.effect`  | 特效     |
+| `map.analyse` | 空间分析 |
+| `map.control` | UI 控件  |
+| `map.scene`   | 场景管理 |
+
+> 材质、坐标转换、资源加载不设 Manager--材质是图元 style 属性、坐标转换是纯计算、资源加载分散到各域，均降级为工具函数。
 
 ## 销毁
 

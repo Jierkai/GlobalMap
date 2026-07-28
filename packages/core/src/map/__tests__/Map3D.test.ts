@@ -8,11 +8,8 @@ import { PlotManager } from '../../plot/PlotManager'
 import { MeasureManager } from '../../measure/MeasureManager'
 import { RoamManager } from '../../roam/RoamManager'
 import { EffectManager } from '../../effect/EffectManager'
-import { MaterialManager } from '../../material/MaterialManager'
 import { AnalyseManager } from '../../analyse/AnalyseManager'
-import { TransformManager } from '../../transform/TransformManager'
 import { ControlManager } from '../../control/ControlManager'
-import { ResourceManager } from '../../resource/ResourceManager'
 import { SceneManager } from '../../scene/SceneManager'
 import type { GraphicStyle } from '../../type'
 
@@ -27,7 +24,7 @@ class FakeGraphic extends BaseGraphic {
 }
 const fakeStyle: GraphicStyle = {}
 
-/** 11 个域 Manager 的名称 -> 原型映射（供 init 时序断言；图元归 GraphicLayer，无全局 Graphic/PrimitiveManager） */
+/** 8 个域 Manager 的名称 -> 原型映射（供 init 时序断言；图元归 GraphicLayer，无全局 Graphic/PrimitiveManager；material/transform/resource 降级为工具函数，无 Manager） */
 function map3dManagerProtos() {
   return {
     layer: LayerManager.prototype,
@@ -35,11 +32,8 @@ function map3dManagerProtos() {
     measure: MeasureManager.prototype,
     roam: RoamManager.prototype,
     effect: EffectManager.prototype,
-    material: MaterialManager.prototype,
     analyse: AnalyseManager.prototype,
-    transform: TransformManager.prototype,
     control: ControlManager.prototype,
-    resource: ResourceManager.prototype,
     scene: SceneManager.prototype,
   }
 }
@@ -179,7 +173,7 @@ describe('Map3D', () => {
     expect(order).toEqual(['layer', 'viewer'])
   })
 
-  it('11 个域 getter 全部存在（无 graphic/primitive；图元归 GraphicLayer，底层图元归 PrimitiveLayer）', () => {
+  it('8 个域 getter 全部存在（无 graphic/primitive/material/transform/resource；图元归 GraphicLayer，底层图元归 PrimitiveLayer，材质/坐标转换/资源加载降级为工具函数）', () => {
     const map = createMap()
     const getters = [
       'layer',
@@ -187,11 +181,8 @@ describe('Map3D', () => {
       'measure',
       'roam',
       'effect',
-      'material',
       'analyse',
-      'transform',
       'control',
-      'resource',
       'scene',
     ] as const
     for (const key of getters) {
@@ -202,6 +193,10 @@ describe('Map3D', () => {
     // 图元/底层图元不再有全局 Manager（归 layer 域）
     expect((map as unknown as { graphic?: unknown }).graphic).toBeUndefined()
     expect((map as unknown as { primitive?: unknown }).primitive).toBeUndefined()
+    // material/transform/resource 降级为工具函数，不再有 Manager
+    expect((map as unknown as { material?: unknown }).material).toBeUndefined()
+    expect((map as unknown as { transform?: unknown }).transform).toBeUndefined()
+    expect((map as unknown as { resource?: unknown }).resource).toBeUndefined()
   })
 
   it('Map3DOptions 接受 layer/basemapsLayer 及各域占位配置（类型占位，运行时消费待图层域开发）', () => {
@@ -213,11 +208,8 @@ describe('Map3D', () => {
       measure: { things: [] },
       roam: { speed: 10 },
       effect: { bloom: false },
-      material: { water: true },
       analyse: { viewshed: false },
-      transform: { mode: 'cartesian' },
       control: { widgets: true },
-      resource: { assets: [] },
       scene: { sky: false },
     })
     expect(map.destroyed).toBe(false)
@@ -250,8 +242,8 @@ describe('Map3D', () => {
     const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
     createMap()
     await Promise.resolve()
-    expect(initLog).toHaveLength(11)
-    // ready 触发点之前必须已完成 11 次 init
+    expect(initLog).toHaveLength(8)
+    // ready 触发点之前必须已完成 8 次 init
     const readyCallOrder = emitSpy.mock.invocationCallOrder[0]
     expect(emitSpy.mock.calls[0][0]).toBe('map3d:ready')
     for (const proto of Object.values(protoSources)) {

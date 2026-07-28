@@ -1,1 +1,3 @@
-export { MaterialManager } from './MaterialManager'
+// material/ 目录保留为空占位：材质是图元 style 属性，自定义材质注册为工具函数，
+// 无 Manager（设计文档 §5.1）。后续迭代按需添加工具函数。
+export {}

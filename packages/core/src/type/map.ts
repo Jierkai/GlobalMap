@@ -14,15 +14,13 @@ export interface Map3DOptions {
   basemapsLayer?: BasemapItem[]
 
   // -- 以下为未开发能力域的占位配置项，先以 Record 占位 --
+  // 注：material/transform/resource 不设 Manager（§5.1），无占位配置项
   plot?: Record<string, unknown>
   measure?: Record<string, unknown>
   roam?: Record<string, unknown>
   effect?: Record<string, unknown>
-  material?: Record<string, unknown>
   analyse?: Record<string, unknown>
-  transform?: Record<string, unknown>
   control?: Record<string, unknown>
-  resource?: Record<string, unknown>
   scene?: Record<string, unknown>
 }
 

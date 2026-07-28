@@ -13,6 +13,7 @@
 > 7. **BasicMap 演示改为空项目**：`example` 案例页降为空壳演示，不在快速开发阶段维护 Demo 闭环逻辑，避免拖累迭代。
 > 8. **Manager 构造注入 `map3d` 保持不变**（注册表/生命周期/事件权威/跨域桥梁四角色所需）；能力实例（特效/分析/控件等）以插件形式 add 到对应 Manager 端口。
 > 9. **`cesiumBaseUrl` 直接删除，零配置自动识别**（2026-07-28）：`Map3DOptions` 不再暴露 `cesiumBaseUrl`——库内部按"npm 依赖场景（打包器插件已设 `window.CESIUM_BASE_URL`）→ lib 场景（script 标签探测）→ 约定值 `/cesium` + dev 警告"自动识别，工程只服务 npm 依赖与 lib 两种消费场景，不支持自定义路径等边缘场景。动机：静态资源部署是工程问题，不该让消费者感知。
+> 10. **删除 material / transform / resource 三个 Manager**（2026-07-28 二轮审计）：Manager 存在的充要条件是“管理**有生命周期的能力实例**且依赖 viewer 运行时”。材质是图元 style 属性（自定义材质注册 = 工具函数）；坐标转换是纯计算（不依赖 viewer、无 init/destroy）；资源加载分散到各域（加载归 layer/graphic，缓存 = 工具）。三者均不满足 Manager 充要条件，降级为 core/util 或 shared 工具函数，`map3d` 不暴露 getter。至此能力域 getter 定为 **8 个**（§5.1）。
 
 ## 1. 项目背景
 
@@ -122,11 +123,12 @@ GlobalMap/
 
 - **无 Manager 继承链**：所有 Manager 不继承任何类，直接 `class XxxManager`
 - **Base 类仅用于数据对象**：`BaseLayer`、`BaseGraphic` 只包含自身域最小公共属性，最多一层继承
-- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.effect`、`map3d.analyse`（共 **11 个**，详见 §5.1 末注）
+- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.effect`、`map3d.analyse`（共 **8 个**，详见 §5.1 末注）
 - **Manager 间通信**：核心数据流直接调用 + 事件通知，扩展点纯事件
 
-> **能力域清单（11 个 Manager）**：`layer` / `plot` / `measure` / `roam` / `effect` / `material` / `analyse` / `transform` / `control` / `resource` / `scene`。
-> 注：① 原 `graphic`（全局 GraphicManager）已移除——图元统一由 `GraphicLayer`（一种图层，见 §5.8）管理，不再设独立的全局图元 Manager；② 原 `primitive`（全局 PrimitiveManager）同理移除——`primitive/` 目录降级为 Primitive 系图元实现目录（extends BaseGraphic），底层图元由未来的 `PrimitiveLayer`（layer 域，与 GraphicLayer 平级）持有。**原则：图层/图元的管理一律归 layer 域；Manager 只管能力实例（插件），不管图元。**
+> **能力域清单（8 个 Manager）**：`layer` / `plot` / `measure` / `roam` / `effect` / `analyse` / `control` / `scene`。
+> **Manager 存在的充要条件**：管理的是**有生命周期的能力实例**（创建 -> 状态变更 -> 销毁），且需依赖 viewer 运行时。不满足者不设 Manager，降级为工具函数。
+> 注：① 原 `graphic`（全局 GraphicManager）已移除--图元统一由 `GraphicLayer`（一种图层，见 §5.8）管理；② 原 `primitive`（全局 PrimitiveManager）同理移除--底层图元由未来的 `PrimitiveLayer`（layer 域）持有；③ 原 `material`、`transform`、`resource` 三个 Manager 已删除--材质是图元 style 属性（自定义材质注册 = core/util 工具）、坐标转换是纯计算（纯数学放 shared、依赖 Cesium 的放 core/util）、资源加载分散到各域（缓存 = core/util 工具），均不满足 Manager 充要条件。**原则：图层/图元的管理一律归 layer 域；Manager 只管能力实例（插件），不管图元、不管纯计算、不管数据。**
 
 ### 5.2 Map3D 生命周期
 
@@ -260,7 +262,7 @@ Mars3D 式归属模型——图元不游离于全局，而是归属某个图层�
 - API：`addGraphic(graphic)` / `removeGraphic(id)` / `getGraphic(id)` / `hasGraphic(id)` / `getAllGraphics()`，方法返回 `this` 链式；内部对 graphic 做 `_bind`。
 - **级联**：`GraphicLayer.show = false` → 组内全部图元 `_updateShow(false)`；`GraphicLayer.destroy()` → 级联销毁组内图元。
 - **事件**：图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 经 eventBus 发出，负载带 `layerId`，与 `layer:*` 事件同构。
-- **无全局 GraphicManager**：图元统一由 GraphicLayer 管理，**删除 `map.graphic`**；`map3d` 不再提供全局图元 Manager/门面（§5.1 能力域收为 11 个）。跨图层的图元检索如需支持，后续在 layer 域以只读聚合形式补充，不单设 Manager。
+- **无全局 GraphicManager**：图元统一由 GraphicLayer 管理，**删除 `map.graphic`**；`map3d` 不再提供全局图元 Manager/门面（§5.1 能力域收为 8 个）。跨图层的图元检索如需支持，后续在 layer 域以只读聚合形式补充，不单设 Manager。
 
 ### 5.9 Map3DOptions 与初始化配置
 
@@ -281,11 +283,8 @@ interface Map3DOptions {
   measure?: Record<string, unknown> // 对齐 Mars3D 的 thing 类（量算/分析实例集合）
   roam?: Record<string, unknown>
   effect?: Record<string, unknown>
-  material?: Record<string, unknown>
   analyse?: Record<string, unknown>
-  transform?: Record<string, unknown>
   control?: Record<string, unknown>
-  resource?: Record<string, unknown>
   scene?: Record<string, unknown>
 }
 

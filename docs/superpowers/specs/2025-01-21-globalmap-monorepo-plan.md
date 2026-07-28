@@ -14,6 +14,8 @@
 > **修订记录（2026-07-27 二轮）**：追加 §4.2 任务 41——删除全局 PrimitiveManager（12→11 getter），primitive/ 目录降级为图元实现目录。
 >
 > **修订记录（2026-07-28）**：追加 §4.3 任务 42–43——`cesiumBaseUrl` 改可选 + `resolveCesiumBaseUrl` 自动识别探测链（design.md §5.7/§5.9 同步）；BasicMap 删显式传参做零配置验证，docs 改写为"零配置优先"。
+>
+> **修订记录（2026-07-28 二轮审计）**：追加 §4.4 任务 44--删除 material/transform/resource 三个 Manager（11->8 getter），三者均不满足 Manager 充要条件（管理有生命周期的能力实例且依赖 viewer），降级为 core/util 或 shared 工具函数。
 
 ## 0. 范围声明（YAGNI）
 
@@ -675,6 +677,30 @@
 - 预计时间：4 分钟
 
 > **检查点 8.2**：任务 42/43 全绿 + BasicMap 零配置冒烟通过 -> 回到 Finishing 阶段。
+
+---
+
+## 4.4 批次 8 补充 3：删除 material/transform/resource 三个 Manager（2026-07-28 二轮审计，待实现）
+
+> 背景：Manager 存在的充要条件是“管理有生命周期的能力实例且依赖 viewer 运行时”。经审计 material/transform/resource 三者均不满足：材质是图元 style 属性、坐标转换是纯计算、资源加载分散到各域。design.md §5.1 能力域收为 **8 个** Manager，§5.9 删除其占位。
+
+### 任务 44：删除 material/transform/resource Manager（11->8 getter，TDD）
+
+- 文件：
+  - **删除** `packages/core/src/material/MaterialManager.ts` 及测试、`material/index.ts`、`map.material` getter、Map3D 构造中的实例化/销毁栈项
+  - **删除** `packages/core/src/transform/TransformManager.ts` 及测试、`transform/index.ts`、`map.transform` getter、同上
+  - **删除** `packages/core/src/resource/ResourceManager.ts` 及测试、`resource/index.ts`、`map.resource` getter、同上
+  - `packages/core/src/map/Map3D.ts`（11 getter -> 8；构造中移除三个 Manager 实例/销毁栈项）
+  - `packages/core/src/type/map.ts`（删除 material/transform/resource 占位）
+  - `packages/core/src/index.ts`（公共出口移除三个导出）
+  - 相关 `__tests__/`（11 getter -> 8；ready 时序守护同步）
+- 描述：按 design.md §5.1（8 能力域）与 §5.9（删除占位）落地；保持 ready 微任务时序守护与销毁栈逆序不破。目录保留（material/ transform/ resource/ 暂空，未来放工具函数实现）。
+- TDD 用例：8 getter 存在（无 graphic/primitive/material/transform/resource）；Map3DOptions 不含 material/transform/resource key；map.destroy 正常级联其余 Manager。Red -> Green -> 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过；整仓回归 `pnpm lint && pnpm -r test && pnpm -r build`。
+- 依赖：任务 41（已完成）
+- 预计时间：4 分钟
+
+> **检查点 8.3**：任务 44 全绿 + 整仓回归通过 -> 回到 Finishing 阶段。
 
 ---
 
