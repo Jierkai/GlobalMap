@@ -4,7 +4,6 @@ import { EventBus } from '../../event'
 import { LayerManager } from '../../layer/LayerManager'
 import { GraphicLayer } from '../../layer/GraphicLayer'
 import { BaseGraphic } from '../../graphic'
-import { PrimitiveManager } from '../../primitive/PrimitiveManager'
 import { PlotManager } from '../../plot/PlotManager'
 import { MeasureManager } from '../../measure/MeasureManager'
 import { RoamManager } from '../../roam/RoamManager'
@@ -28,11 +27,10 @@ class FakeGraphic extends BaseGraphic {
 }
 const fakeStyle: GraphicStyle = {}
 
-/** 12 个域 Manager 的名称 → 原型映射（供 init 时序断言；图元归 GraphicLayer，无全局 GraphicManager） */
+/** 11 个域 Manager 的名称 -> 原型映射（供 init 时序断言；图元归 GraphicLayer，无全局 Graphic/PrimitiveManager） */
 function map3dManagerProtos() {
   return {
     layer: LayerManager.prototype,
-    primitive: PrimitiveManager.prototype,
     plot: PlotManager.prototype,
     measure: MeasureManager.prototype,
     roam: RoamManager.prototype,
@@ -177,11 +175,10 @@ describe('Map3D', () => {
     expect(order).toEqual(['layer', 'viewer'])
   })
 
-  it('12 个域 getter 全部存在（无 graphic；图元归 GraphicLayer）', () => {
+  it('11 个域 getter 全部存在（无 graphic/primitive；图元归 GraphicLayer，底层图元归 PrimitiveLayer）', () => {
     const map = createMap()
     const getters = [
       'layer',
-      'primitive',
       'plot',
       'measure',
       'roam',
@@ -198,8 +195,9 @@ describe('Map3D', () => {
       expect(typeof map[key].init).toBe('function')
       expect(typeof map[key].destroy).toBe('function')
     }
-    // 图元不再有全局 Manager
+    // 图元/底层图元不再有全局 Manager（归 layer 域）
     expect((map as unknown as { graphic?: unknown }).graphic).toBeUndefined()
+    expect((map as unknown as { primitive?: unknown }).primitive).toBeUndefined()
   })
 
   it('Map3DOptions 接受 layer/basemapsLayer 及各域占位配置（类型占位，运行时消费待图层域开发）', () => {
@@ -208,7 +206,6 @@ describe('Map3D', () => {
       cesiumBaseUrl: '/cesium',
       layer: [{ type: 'graphic' }],
       basemapsLayer: [{ name: 'arcgis' }],
-      primitive: { foo: 1 },
       plot: { bar: true },
       measure: { things: [] },
       roam: { speed: 10 },
@@ -250,8 +247,8 @@ describe('Map3D', () => {
     const emitSpy = vi.spyOn(EventBus.prototype, 'emit')
     createMap()
     await Promise.resolve()
-    expect(initLog).toHaveLength(12)
-    // ready 触发点之前必须已完成 12 次 init
+    expect(initLog).toHaveLength(11)
+    // ready 触发点之前必须已完成 11 次 init
     const readyCallOrder = emitSpy.mock.invocationCallOrder[0]
     expect(emitSpy.mock.calls[0][0]).toBe('map3d:ready')
     for (const proto of Object.values(protoSources)) {

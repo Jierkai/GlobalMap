@@ -546,6 +546,8 @@
 > 3. `Map3DOptions` 扩展 `layer` / `basemapsLayer` 初始化集合，及 `measure`/`control` 等未开发域的 `Record` 占位配置项。
 > 4. shared 新增 `generateId()` 纯函数。
 > 5. BasicMap 演示改为**空项目**。
+>
+> （2026-07-27 二轮追加：**删除全局 PrimitiveManager / `map.primitive`**，12→11 getter，见 §4.2 任务 41。）
 
 ### 任务 36：shared/generateId（TDD）
 
@@ -585,7 +587,7 @@
 - 依赖：任务 37
 - 预计时间：6 分钟
 
-### 任务 39：Map3DOptions 占位 + 删除 GraphicManager + Manager 接线（TDD）
+### 任务 39：Map3DOptions 占位 + 删除 GraphicManager + Manager 接线（TDD）— ✅ 已完成（commit 7ecc72c / a8e2006）
 
 - 文件：
   - `packages/core/src/type/map.ts`（`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域 `Record` 占位；新增 `LayerInitItem`/`BasemapItem`）
@@ -610,6 +612,30 @@
 > **检查点 8**：批次 8 全绿 + BasicMap 空演示冒烟通过 → 回到 Finishing 阶段。
 
 > **移交说明**：本批次任务 36–40 为代码实现工作，**当前设计定稿阶段不执行**；移交实现方时，请其严格遵循 design.md §5.6/§5.8/§5.9 签名与本计划 TDD 要求逐任务落地，每个任务一个 commit（`feat(<scope>): task <n> <名称>`）。
+
+> **执行记录（2026-07-27）**：任务 36–40 已由实现方全部完成并 commit（`93efceb`/`20e1a8e`/`7ecc72c`/`7ddb14c`/`a8e2006`/`f8caca3`），检查点 8 达成——159 测试全绿（shared 47 + core 112）、4 包构建通过、core dist external 0 泄漏、BasicMap 空演示落地。
+
+---
+
+## 4.2 批次 8 补充：删除全局 PrimitiveManager（2026-07-27 二轮决策，待实现）
+
+> 背景：批次 8 落地后评审发现——按"图层/图元的管理一律归 layer 域"原则，primitive 与已删的 graphic 同理，不应保留全局 Manager（Mars3D 中底层图元由 `PrimitiveLayer` 持有）。design.md 已同步（§5.1 能力域收为 **11 个**、§5.9 无 primitive 占位）。
+
+### 任务 41：删除全局 PrimitiveManager（12→11 getter，TDD）
+
+- 文件：
+  - **删除** `packages/core/src/primitive/PrimitiveManager.ts` 及其测试、`map.primitive` getter；`primitive/` 目录保留（暂空，未来放 Primitive 系图元实现）
+  - `packages/core/src/map/Map3D.ts`（移除 primitive getter 与 Manager 实例/销毁栈项）
+  - `packages/core/src/type/map.ts`（移除 `primitive?: Record<string, unknown>` 占位）
+  - 相关 `__tests__/`（12 getter → 11；ready 时序守护同步）
+  - `packages/core/src/index.ts`、`primitive/index.ts` 出口同步
+- 描述：按 design.md §5.1（11 能力域）与 §5.9（无 primitive 占位）落地；保持 ready 微任务时序守护与销毁栈逆序不破。
+- TDD 用例：11 getter 存在（无 graphic/primitive）；Map3DOptions 不再含 primitive key；map.destroy 正常级联其余 Manager。Red → Green → 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过；整仓回归 `pnpm lint && pnpm -r test && pnpm -r build`。
+- 依赖：任务 40（批次 8 已完成）
+- 预计时间：4 分钟
+
+> **检查点 8.1**：任务 41 全绿 + 整仓回归通过 → 回到 Finishing 阶段。
 
 ---
 

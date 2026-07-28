@@ -15,7 +15,6 @@ export interface Map3DOptions {
   basemapsLayer?: BasemapItem[]
 
   // -- 以下为未开发能力域的占位配置项，先以 Record 占位 --
-  primitive?: Record<string, unknown>
   plot?: Record<string, unknown>
   measure?: Record<string, unknown>
   roam?: Record<string, unknown>

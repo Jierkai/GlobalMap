@@ -36,36 +36,36 @@ GlobalMap/
 └── .husky/pre-commit
 ```
 
-`core/src` 按**领域**组织，每个域一个 Manager（共 12 个）：
+`core/src` 按**领域**组织，能力域 Manager 共 11 个：
 
 ```
 map/        Map3D 根类（组合入口）
 event/      EventBus 事件系统
-layer/      图层管理（含 GraphicLayer：图层管理图元）
-graphic/    业务图元（BaseGraphic，由 GraphicLayer 持有，无全局 Manager）
-primitive/  底层图元        plot/       标绘
-measure/    测量            roam/       漫游
-effect/     特效            material/   材质
-analyse/    空间分析        transform/  坐标转换
-control/    UI 控件         resource/   资源加载
-scene/      场景管理        type/       集中接口定义
-util/       core 内部工具（依赖 Cesium）
+layer/      图层管理（含 GraphicLayer；未来 PrimitiveLayer：图层管理图元）
+graphic/    业务图元（BaseGraphic 及 Entity 系实现，由 GraphicLayer 持有，无 Manager）
+primitive/  底层图元（Primitive 系实现，由未来 PrimitiveLayer 持有，无 Manager）
+plot/       标绘            measure/    测量
+roam/       漫游            effect/     特效
+material/   材质            analyse/    空间分析
+transform/  坐标转换        control/    UI 控件
+resource/   资源加载        scene/      场景管理
+type/       集中接口定义    util/       core 内部工具（依赖 Cesium）
 ```
 
 ## 3. 核心架构与契约（修改代码前必读）
 
-Map3D 构造时序：`setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 **12 个 Manager**（layer / primitive / plot / measure / roam / effect / material / analyse / transform / control / resource / scene）→ 逐个 `Manager.init()` 建立跨域关联。
+Map3D 构造时序：`setCesiumBaseUrl` → 创建 `Cesium.Viewer` → 实例化 `EventBus` → 实例化全部 **11 个 Manager**（layer / plot / measure / roam / effect / material / analyse / transform / control / resource / scene）→ 逐个 `Manager.init()` 建立跨域关联。
 
-> **2026-07-27 设计定稿**：Base 类改**晚期绑定**、图元归 **GraphicLayer** 管理（删除全局 GraphicManager）、构造改 **options 对象**（id 缺省 `generateId()`）、`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域占位。以下为定稿后的契约。
+> **2026-07-27 设计定稿**：Base 类改**晚期绑定**、图元归 **GraphicLayer** 管理（删除全局 Graphic/Primitive Manager——原则：**图层/图元的管理一律归 layer 域，Manager 只管能力实例不管图元**）、构造改 **options 对象**（id 缺省 `generateId()`）、`Map3DOptions` 扩展 `layer`/`basemapsLayer` 及各域占位。以下为定稿后的契约。
 
 以下契约已有测试守护，**破坏即测试红**：
 
-- **`map3d:ready` 微任务触发**：构造末尾 `queueMicrotask` 发出（在 12 个 Manager init 之后）。`new` 之后同步 `on` 订阅可收到；触发后再订阅收不到。不得因 Manager 增多而把 ready 提前。
+- **`map3d:ready` 微任务触发**：构造末尾 `queueMicrotask` 发出（在 11 个 Manager init 之后）。`new` 之后同步 `on` 订阅可收到；触发后再订阅收不到。不得因 Manager 增多而把 ready 提前。
 - **销毁栈逆序**：Manager → Viewer →（emit `map3d:destroyed`）→ EventBus；单个回调异常 try-catch 兜底，不影响其余回调。
 - **EventBus**：`on` 返回取消订阅函数；`void` 负载事件无参 emit；destroy 幂等，销毁后 emit 静默。
 - **BaseLayer / BaseGraphic（晚期绑定）**：构造只收 **options 对象**（`id?` 缺省经 `generateId()` 随机生成、`show?` 声明初始可见性；BaseGraphic 的 options 内含必填 `style`，泛型 `<TStyle extends GraphicStyle>`）；不接触 map 内部。`viewer`/`eventBus` 在 `addLayer`/`addGraphic` 时由框架经 `_bind()` 注入。守卫：重复 bind 到不同 map 抛错；未 bind 触发依赖行为抛错。`show` setter 去重 → `_updateShow` → emit `*:showChanged`；destroy 幂等调 `removeFromMap`。
 - **GraphicLayer（layer 域）**：`GraphicLayer extends BaseLayer`，是一种"装图元的图层"。`addGraphic/removeGraphic/getGraphic/hasGraphic/getAllGraphics` 链式；图层 `show`/`destroy` **级联**组内图元；图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 发出，负载带 `layerId`。**无 `map.graphic`**。
-- **Map3DOptions 初始化配置**：除 `container`/`cesiumBaseUrl`/`viewerOptions` 外，支持 `layer`（初始化图层集合）、`basemapsLayer`（Cesium 底图集合，首项默认）；`primitive`/`plot`/`measure`/`roam`/`effect`/`material`/`analyse`/`transform`/`control`/`resource`/`scene` 等未开发域先以 `Record<string, unknown>` 占位（`measure` 对齐 Mars3D thing 类），各域开发时再具体化。
+- **Map3DOptions 初始化配置**：除 `container`/`cesiumBaseUrl`/`viewerOptions` 外，支持 `layer`（初始化图层集合）、`basemapsLayer`（Cesium 底图集合，首项默认）；`plot`/`measure`/`roam`/`effect`/`material`/`analyse`/`transform`/`control`/`resource`/`scene` 等未开发域先以 `Record<string, unknown>` 占位（`measure` 对齐 Mars3D thing 类；无 primitive 占位，Primitive 系图元走 `layer` 集合），各域开发时再具体化。
 - **Manager**：构造仅收 `(map3d, options?)`；方法返回 `this` 支持链式；`init()` 不暴露给用户。
 
 ## 4. 快速开始
@@ -86,10 +86,11 @@ pnpm changeset      # 变更集（发版流程：changeset → version → publi
 - [x] Monorepo 骨架 35+1 任务全部完成（2026-07-24）：4 包识别、lint/prettier 0 问题、137 测试全绿、4 包构建通过、core dist external 验证（cesium 裸导入、0 Cesium 源码打入）、changeset status 仅 core/shared patch
 - [x] BasicMap 端到端冒烟通过（2026-07-27）：`map3d:ready` 徽标、图层/图元增删显隐事件流全部正确；无 ion 网络环境下影像源方案落地（见 §6）
 - [x] **Code Review 完成**（2026-07-27）：按 Superpowers SDD 输出 `.superpowers/sdd/review.md`（0 Critical / 1 Major / 8 Minor）；唯一 Major（core/shared 缺 `files: ["dist"]`）已修复（commit `c4634e6`/`eef06bb`）
-- [x] **设计定稿**（2026-07-27）：架构方向调整定稿——Base 类晚期绑定 + options 构造（id 缺省 generateId）、图元归 GraphicLayer（删除全局 GraphicManager，13→12 Manager）、Map3DOptions 扩展 layer/basemapsLayer 及各域 Record 占位、BasicMap 改空演示、shared 新增 generateId。定稿见 design.md 顶部修订记录与 §5.6/§5.8/§5.9/§6.4
-- [x] **批次 8 架构调整**（2026-07-27）：任务 36–40 全部完成——generateId（shared）→ Base 晚期绑定 + options 构造 → GraphicLayer（layer 域，级联显隐/销毁，graphic:* 事件带 layerId）→ 删除全局 GraphicManager（13→12 getter）+ Map3DOptions 占位接线 → BasicMap 改空演示 + 整仓回归。155 测试全绿、4 包构建通过、core dist external cesium 0 泄漏
+- [x] **设计定稿**（2026-07-27）：架构方向调整定稿——Base 类晚期绑定 + options 构造（id 缺省 generateId）、图元归 GraphicLayer（删除全局 GraphicManager）、Map3DOptions 扩展 layer/basemapsLayer 及各域 Record 占位、BasicMap 改空演示、shared 新增 generateId。定稿见 design.md 顶部修订记录与 §5.6/§5.8/§5.9/§6.4
+- [x] **批次 8 架构调整**（2026-07-27）：任务 36–40 全部完成——generateId（shared）→ Base 晚期绑定 + options 构造 → GraphicLayer（layer 域，级联显隐/销毁，graphic:\* 事件带 layerId）→ 删除全局 GraphicManager（13→12 getter）+ Map3DOptions 占位接线 → BasicMap 改空演示 + 整仓回归。159 测试全绿（shared 47 + core 112）、4 包构建通过、core dist external cesium 0 泄漏
+- [ ] **批次 8 补充：删除全局 PrimitiveManager**（2026-07-27 二轮决策，plan.md §4.2 任务 41）：primitive 与 graphic 同理——**图层/图元的管理一律归 layer 域，Manager 只管能力实例不管图元**；删后 12→11 getter，`primitive/` 目录保留（未来放 Primitive 系图元实现，由 PrimitiveLayer 持有）
 - [ ] **Finishing 阶段**：收尾验收
-- [ ] **功能域开发（待规划）**：12 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer 与 layer/basemapsLayer 初始化集合具体化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
+- [ ] **功能域开发（待规划）**：11 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer/PrimitiveLayer 与 layer/basemapsLayer 初始化集合具体化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
 
 ## 6. 环境坑位（勿踩）
 

@@ -7,10 +7,11 @@
 > 1. **§5.6 Base 类改晚期绑定**：构造只收纯数据，不再构造注入 viewer/eventBus；`viewer`/`eventBus` 在 `map.addLayer()` 时经 `_bind()` 注入。动机：贴合 Mars3D 用户心智（`new TileLayer(opts)` → `map.addLayer(layer)`，创建与挂载分离），避免创建图层需探进 map 内脏；顺带使 `style.show` 初始值可在 bind 时同步。
 > 2. **§5.6 构造签名改 options 对象**：`id` 移入 `options`，不传则经 `generateId()`（shared）随机生成；构造从位置参数改为 options 对象，便于扩展。
 > 3. **新增 §5.8 GraphicLayer**：确立"图层管理图元"的 Mars3D 式归属模型；`GraphicLayer extends BaseLayer`（归 **layer 域**）管一组图元并级联显隐/销毁；图元事件由所属 GraphicLayer 发出（§5.4 EventMap 负载带 `layerId`）。
-> 4. **删除 `map.graphic`**：图元统一由 GraphicLayer 管理，移除全局 GraphicManager，`map3d` 的 13 个能力域 getter 收为 **12 个**（§5.1 同步）。
-> 5. **新增 §5.9 Map3DOptions**：`Map3D` 构造项扩展 `layer`（初始化图层集合）与 `basemapsLayer`（Cesium 底图集合）；`measure`、`control` 等未开发能力域统一先以 `Record<string, unknown>` 占位配置项，待各域开发时再具体化。
-> 6. **BasicMap 演示改为空项目**：`example` 案例页降为空壳演示，不在快速开发阶段维护 Demo 闭环逻辑，避免拖累迭代。
-> 7. **Manager 构造注入 `map3d` 保持不变**（注册表/生命周期/事件权威/跨域桥梁四角色所需）；能力实例（特效/分析/控件等）以插件形式 add 到对应 Manager 端口。
+> 4. **删除 `map.graphic`**：图元统一由 GraphicLayer 管理，移除全局 GraphicManager。
+> 5. **删除 `map.primitive`**（同日二轮追加，同理）：底层图元的管理同样是 layer 的事——`primitive/` 目录降级为 Primitive 系图元实现目录（图元类 extends BaseGraphic），未来新增 `PrimitiveLayer extends BaseLayer` 归 layer 域持有底层图元。至此能力域 getter 定为 **11 个**（§5.1）。
+> 6. **新增 §5.9 Map3DOptions**：`Map3D` 构造项扩展 `layer`（初始化图层集合）与 `basemapsLayer`（Cesium 底图集合）；`measure`、`control` 等未开发能力域统一先以 `Record<string, unknown>` 占位配置项（primitive 不再单设，走 `layer` 集合的 type 判别），待各域开发时再具体化。
+> 7. **BasicMap 演示改为空项目**：`example` 案例页降为空壳演示，不在快速开发阶段维护 Demo 闭环逻辑，避免拖累迭代。
+> 8. **Manager 构造注入 `map3d` 保持不变**（注册表/生命周期/事件权威/跨域桥梁四角色所需）；能力实例（特效/分析/控件等）以插件形式 add 到对应 Manager 端口。
 
 ## 1. 项目背景
 
@@ -62,9 +63,9 @@ GlobalMap/
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── map/             # Map3D 根类
-│   │   │   ├── layer/           # 图层管理域
-│   │   │   ├── graphic/         # 业务图元域
-│   │   │   ├── primitive/       # 底层图元域
+│   │   │   ├── layer/           # 图层管理域（含 GraphicLayer、未来 PrimitiveLayer）
+│   │   │   ├── graphic/         # 业务图元（BaseGraphic 及 Entity 系图元实现，无 Manager）
+│   │   │   ├── primitive/       # 底层图元（Primitive 系图元实现，无 Manager）
 │   │   │   ├── plot/            # 标绘域
 │   │   │   ├── measure/         # 测量域
 │   │   │   ├── roam/            # 漫游域
@@ -120,11 +121,11 @@ GlobalMap/
 
 - **无 Manager 继承链**：所有 Manager 不继承任何类，直接 `class XxxManager`
 - **Base 类仅用于数据对象**：`BaseLayer`、`BaseGraphic` 只包含自身域最小公共属性，最多一层继承
-- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.effect`、`map3d.analyse`（共 **12 个**，详见 §5.1 末注）
+- **Map3D 作为组合根**：通过 getter 暴露各能力域 Manager，如 `map3d.layer`、`map3d.effect`、`map3d.analyse`（共 **11 个**，详见 §5.1 末注）
 - **Manager 间通信**：核心数据流直接调用 + 事件通知，扩展点纯事件
 
-> **能力域清单（12 个 Manager）**：`layer` / `primitive` / `plot` / `measure` / `roam` / `effect` / `material` / `analyse` / `transform` / `control` / `resource` / `scene`。
-> 注：原 `graphic`（全局 GraphicManager）已移除——图元统一由 `GraphicLayer`（一种图层，见 §5.8）管理，不再设独立的全局图元 Manager。
+> **能力域清单（11 个 Manager）**：`layer` / `plot` / `measure` / `roam` / `effect` / `material` / `analyse` / `transform` / `control` / `resource` / `scene`。
+> 注：① 原 `graphic`（全局 GraphicManager）已移除——图元统一由 `GraphicLayer`（一种图层，见 §5.8）管理，不再设独立的全局图元 Manager；② 原 `primitive`（全局 PrimitiveManager）同理移除——`primitive/` 目录降级为 Primitive 系图元实现目录（extends BaseGraphic），底层图元由未来的 `PrimitiveLayer`（layer 域，与 GraphicLayer 平级）持有。**原则：图层/图元的管理一律归 layer 域；Manager 只管能力实例（插件），不管图元。**
 
 ### 5.2 Map3D 生命周期
 
@@ -244,7 +245,7 @@ Mars3D 式归属模型——图元不游离于全局，而是归属某个图层�
 - API：`addGraphic(graphic)` / `removeGraphic(id)` / `getGraphic(id)` / `hasGraphic(id)` / `getAllGraphics()`，方法返回 `this` 链式；内部对 graphic 做 `_bind`。
 - **级联**：`GraphicLayer.show = false` → 组内全部图元 `_updateShow(false)`；`GraphicLayer.destroy()` → 级联销毁组内图元。
 - **事件**：图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 经 eventBus 发出，负载带 `layerId`，与 `layer:*` 事件同构。
-- **无全局 GraphicManager**：图元统一由 GraphicLayer 管理，**删除 `map.graphic`**；`map3d` 不再提供全局图元 Manager/门面（§5.1 能力域收为 12 个）。跨图层的图元检索如需支持，后续在 layer 域以只读聚合形式补充，不单设 Manager。
+- **无全局 GraphicManager**：图元统一由 GraphicLayer 管理，**删除 `map.graphic`**；`map3d` 不再提供全局图元 Manager/门面（§5.1 能力域收为 11 个）。跨图层的图元检索如需支持，后续在 layer 域以只读聚合形式补充，不单设 Manager。
 
 ### 5.9 Map3DOptions 与初始化配置
 
@@ -262,7 +263,6 @@ interface Map3DOptions {
   basemapsLayer?: BasemapItem[]
 
   // —— 以下为未开发能力域的占位配置项，先以 Record 占位 ——
-  primitive?: Record<string, unknown>
   plot?: Record<string, unknown>
   measure?: Record<string, unknown> // 对齐 Mars3D 的 thing 类（量算/分析实例集合）
   roam?: Record<string, unknown>

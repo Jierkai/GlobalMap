@@ -1,7 +1,6 @@
 import { Viewer } from 'cesium'
 import { EventBus } from '../event'
 import { LayerManager } from '../layer'
-import { PrimitiveManager } from '../primitive'
 import { PlotManager } from '../plot'
 import { MeasureManager } from '../measure'
 import { RoamManager } from '../roam'
@@ -34,7 +33,6 @@ export class Map3D implements Disposable {
   private _viewer: Viewer
   private _eventBus: EventBus
   private _layer: LayerManager
-  private _primitive: PrimitiveManager
   private _plot: PlotManager
   private _measure: MeasureManager
   private _roam: RoamManager
@@ -53,9 +51,8 @@ export class Map3D implements Disposable {
     setCesiumBaseUrl(options.cesiumBaseUrl)
     this._viewer = new Viewer(options.container, options.viewerOptions)
     this._eventBus = new EventBus()
-    // 阶段①：按固定顺序实例化全部 12 个 Manager（图元归 GraphicLayer，无全局 GraphicManager）
+    // 阶段①：按固定顺序实例化全部 11 个 Manager（图元归 GraphicLayer，底层图元归 PrimitiveLayer，无全局 Manager）
     this._layer = new LayerManager(this)
-    this._primitive = new PrimitiveManager(this)
     this._plot = new PlotManager(this)
     this._measure = new MeasureManager(this)
     this._roam = new RoamManager(this)
@@ -69,7 +66,6 @@ export class Map3D implements Disposable {
     // 注册销毁栈（逆序销毁时 Manager 先于 Viewer）
     this._disposers.push(() => this._viewer.destroy())
     this._disposers.push(() => this._layer.destroy())
-    this._disposers.push(() => this._primitive.destroy())
     this._disposers.push(() => this._plot.destroy())
     this._disposers.push(() => this._measure.destroy())
     this._disposers.push(() => this._roam.destroy())
@@ -93,7 +89,6 @@ export class Map3D implements Disposable {
   /** 建立跨域关联：全部 Manager 实例化后逐个 init */
   private init(): void {
     this._layer.init()
-    this._primitive.init()
     this._plot.init()
     this._measure.init()
     this._roam.init()
@@ -116,10 +111,6 @@ export class Map3D implements Disposable {
 
   get layer(): LayerManager {
     return this._layer
-  }
-
-  get primitive(): PrimitiveManager {
-    return this._primitive
   }
 
   get plot(): PlotManager {
