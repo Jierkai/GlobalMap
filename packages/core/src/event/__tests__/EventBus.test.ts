@@ -38,7 +38,7 @@ describe('EventBus', () => {
     bus.on('graphic:removed', h1)
     bus.on('graphic:removed', h2)
     bus.off('graphic:removed', h1)
-    bus.emit('graphic:removed', { graphicId: 'g1' })
+    bus.emit('graphic:removed', { layerId: 'l1', graphicId: 'g1' })
     expect(h1).not.toHaveBeenCalled()
     expect(h2).toHaveBeenCalledTimes(1)
   })
@@ -56,7 +56,7 @@ describe('EventBus', () => {
     const handler = vi.fn()
     bus.on('graphic:removed', handler)
     bus.destroy()
-    bus.emit('graphic:removed', { graphicId: 'g1' })
+    bus.emit('graphic:removed', { layerId: 'l1', graphicId: 'g1' })
     expect(handler).not.toHaveBeenCalled()
   })
 

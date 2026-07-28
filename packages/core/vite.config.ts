@@ -10,7 +10,7 @@ export default defineConfig({
       fileName: () => 'index.js',
     },
     rollupOptions: {
-      external: ['cesium'],
+      external: ['cesium', '@globalmap/shared'],
     },
   },
   plugins: [
