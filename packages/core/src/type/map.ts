@@ -1,7 +1,7 @@
 /**
  * Map3D 构造函数选项（设计文档 §5.9）。
  *
- * 除 container / cesiumBaseUrl / viewerOptions 外，扩展初始化配置；
+ * `Map3D` 构造项含 `container` / `viewerOptions` 及初始化配置；`cesiumBaseUrl` 不暴露（§5.7 自动识别）；
  * 未开发能力域先以 Record<string, unknown> 占位，待各域开发时再具体化为强类型。
  */
 export interface Map3DOptions {

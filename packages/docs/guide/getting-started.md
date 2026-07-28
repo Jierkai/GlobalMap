@@ -19,7 +19,6 @@ import { Map3D } from '@globalmap/core'
 
 const map = new Map3D({
   container: 'map-container', // DOM id 或 HTMLElement
-  cesiumBaseUrl: '/cesium', // Cesium 静态资源目录，见「Cesium 静态资源」
 })
 
 // map3d:ready 是判断地图就绪的唯一信号
@@ -27,6 +26,8 @@ map.eventBus.on('map3d:ready', () => {
   console.log('地图就绪')
 })
 ```
+
+Cesium 静态资源路径自动识别，无需手动配置（见「Cesium 静态资源」）。
 
 对应 HTML：
 
@@ -36,13 +37,11 @@ map.eventBus.on('map3d:ready', () => {
 
 ## 能力域
 
-`Map3D` 实例通过 getter 暴露 13 个能力域 Manager：
+`Map3D` 实例通过 getter 暴露 11 个能力域 Manager：
 
 | getter          | 域       |
 | --------------- | -------- |
 | `map.layer`     | 图层管理 |
-| `map.graphic`   | 业务图元 |
-| `map.primitive` | 底层图元 |
 | `map.plot`      | 标绘     |
 | `map.measure`   | 测量     |
 | `map.roam`      | 漫游     |

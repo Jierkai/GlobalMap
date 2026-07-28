@@ -18,11 +18,14 @@ const ready = ref(false)
 let map: Map3D | null = null
 
 onMounted(() => {
-  const cesiumBaseUrl = import.meta.env.BASE_URL + 'cesium'
   // ArcGIS 影像瓦片模板直连：不走 ArcGisMapServerImageryProvider.fromUrl，
   // 避免其 MapServer 元数据请求（本网络下该端点访问不稳定会抛 RuntimeError）。
   const arcgisTileUrl =
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+
+  // vite-plugin-cesium 自动注入 window.CESIUM_BASE_URL（指向 /cesium），
+  // 这里取该值用于 ProviderViewModel 的 iconUrl 拼接。
+  const cesiumBaseUrl = (window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL ?? '/cesium'
 
   // 当前网络无法访问 api.cesium.com：Cesium 默认影像列表基于 ion 资产，
   // baseLayerPicker 初始化会请求 /v1/assets/2/endpoint 导致 RequestErrorEvent 且地球无影像。
@@ -44,9 +47,10 @@ onMounted(() => {
     }),
   ]
 
+  // 零配置：不传 cesiumBaseUrl，由 resolveCesiumBaseUrl 自动识别
+  // （vite-plugin-cesium 已注入 window.CESIUM_BASE_URL = '/cesium'）
   map = new Map3D({
     container: 'map-container',
-    cesiumBaseUrl,
     // 本案例不做实体点选：禁用 InfoBox，消除其沙箱 iframe 的 Chrome 拦截提示；
     // 默认 ion 地理编码在本网络不可用：禁用 geocoder；
     // 初始 baseLayer 直接挂 ArcGIS 影像（同步构造，无任何元数据请求）。

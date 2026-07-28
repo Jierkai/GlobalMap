@@ -39,7 +39,6 @@ export function resolveCesiumBaseUrl(): string {
   const detected = detectFromScriptTag()
   if (detected) return detected
 
-   
   console.warn(
     '[GlobalMap] 未检测到 Cesium 静态资源路径（window.CESIUM_BASE_URL 未设、未找到 Cesium.js script 标签）。' +
       '回退为 "/cesium"。如遇 404，请安装打包器插件：npm+Vite 用 vite-plugin-cesium，' +
