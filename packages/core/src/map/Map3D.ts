@@ -1,4 +1,11 @@
-import { Viewer } from 'cesium'
+import {
+  Viewer,
+  ImageryLayer,
+  UrlTemplateImageryProvider,
+  OpenStreetMapImageryProvider,
+  ProviderViewModel,
+} from 'cesium'
+import type { ImageryProvider } from 'cesium'
 import { EventBus } from '../event'
 import { LayerManager } from '../layer'
 import { PlotManager } from '../plot'
@@ -8,8 +15,9 @@ import { EffectManager } from '../effect'
 import { AnalyseManager } from '../analyse'
 import { ControlManager } from '../control'
 import { SceneManager } from '../scene'
-import { resolveCesiumBaseUrl } from '../util'
+import { resolveCesiumBaseUrl, createLayerFromInitItem } from '../util'
 import type { Disposable, Map3DOptions } from '../type'
+import type { BaseLayer } from '../layer'
 
 /**
  * Map3D 组合根（设计文档 §5.1 / §5.2）。
@@ -23,6 +31,10 @@ import type { Disposable, Map3DOptions } from '../type'
  * 销毁采用"显式注册 + 逆序销毁"：eventBus 最先创建、最后销毁；
  * 每个销毁回调 try-catch 兜底，单个失败不阻断后续；
  * 全部销毁动作完成后、eventBus 自身销毁前 emit `map3d:destroyed`。
+ *
+ * 图层域扩展（设计文档 §4.3 / §4.4）：
+ * - `basemapsLayer`：构造时解析为 `viewerOptions.imageryProviderViewModels` + `selectedImageryProviderViewModel` + `baseLayer`。
+ * - `layer`：`map3d:ready` 之前按序 `addLayer`。
  *
  * 注：图元统一由 GraphicLayer（layer 域，§5.8）管理，不再设全局 GraphicManager。
  * material/transform/resource 不满足 Manager 充要条件（§5.1），降级为工具函数，无 Manager。
@@ -45,10 +57,59 @@ export class Map3D implements Disposable {
   constructor(options: Map3DOptions) {
     // Cesium 静态资源自动识别（设计文档 §5.7）：打包器插件注入 > script 探测 > /cesium 兜底
     ;(window as { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = resolveCesiumBaseUrl()
-    this._viewer = new Viewer(options.container, options.viewerOptions)
+
+    // -- 消费 basemapsLayer 配置项（设计文档 §4.3） --
+    const viewerOptions: Record<string, unknown> = { ...options.viewerOptions }
+
+    if (options.basemapsLayer?.length) {
+      const basemapLayers = options.basemapsLayer.map((item) => {
+        const layer = createLayerFromInitItem(item)
+        return { item, layer }
+      })
+
+      // 首项作为默认底图：同步创建 provider，确保地球初始即有影像
+      const firstLayer = basemapLayers[0].layer as BaseLayer & {
+        _provider?: unknown
+        _buildProviderConfig?: () => unknown
+      }
+      // 首项图层在 Viewer 构造前同步创建 provider（仅 UrlTemplateLayer 支持）
+      // BingLayer/ArcGisLayer 走异步，首项底图需用 UrlTemplateLayer 类型
+      this._createBasemapProvider(firstLayer)
+
+      if (firstLayer._provider) {
+        viewerOptions.baseLayer = new ImageryLayer(
+          firstLayer._provider as ImageryProvider,
+        )
+      }
+
+      // 组装 ProviderViewModel（底图选择器列表）
+      const viewModels = basemapLayers.map(({ item, layer }) => {
+        const bl = layer as BaseLayer & { _provider?: unknown }
+        return new ProviderViewModel({
+          name: item.name ?? (layer as { name?: string }).name ?? item.type,
+          iconUrl: item.iconUrl ?? '',
+          tooltip: item.tooltip ?? '',
+          creationFunction: (() => {
+            // 切换底图时创建 provider 并返回
+            this._createBasemapProvider(bl)
+            return bl._provider
+          }) as ProviderViewModel.CreationFunction,
+        })
+      })
+      viewerOptions.imageryProviderViewModels = viewModels
+      viewerOptions.selectedImageryProviderViewModel = viewModels[0]
+    }
+
+    // 兜底：未传 basemapsLayer 且未配 baseLayer -> OSM
+    if (!viewerOptions.baseLayer && viewerOptions.baseLayerPicker !== false) {
+      viewerOptions.baseLayer = new ImageryLayer(
+        new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
+      )
+    }
+
+    this._viewer = new Viewer(options.container, viewerOptions)
     this._eventBus = new EventBus()
     // 阶段①：按固定顺序实例化全部 8 个 Manager
-    // （图元归 GraphicLayer，底层图元归 PrimitiveLayer，材质/坐标转换/资源加载为工具函数，均无全局 Manager）
     this._layer = new LayerManager(this)
     this._plot = new PlotManager(this)
     this._measure = new MeasureManager(this)
@@ -69,12 +130,38 @@ export class Map3D implements Disposable {
     this._disposers.push(() => this._scene.destroy())
     // 阶段②：建立跨域关联，全部完成后才调度 ready
     this.init()
+
+    // -- 消费 layer 配置项（设计文档 §4.4）：ready 之前按序 addLayer --
+    if (options.layer?.length) {
+      for (const item of options.layer) {
+        const layer = createLayerFromInitItem(item)
+        this._layer.addLayer(layer)
+      }
+    }
+
     // map3d:ready 以微任务触发（仍由构造函数调度、仍在全部 init 之后）：
     // 外部消费者在 new 之后同步 on 订阅即可收到（Vue onMounted 场景），
     // 这是消费者判断地图就绪的唯一信号。
     queueMicrotask(() => {
       if (!this._destroyed) this._eventBus.emit('map3d:ready')
     })
+  }
+
+  /**
+   * 同步创建底图 provider（仅 UrlTemplateLayer 子类支持同步创建）。
+   * BingLayer/ArcGisLayer 走异步，首项底图不推荐使用。
+   */
+  private _createBasemapProvider(
+    layer: BaseLayer & { _provider?: unknown; _buildProviderConfig?: () => unknown },
+  ): void {
+    if (layer._provider) return
+    if (layer._buildProviderConfig) {
+      // UrlTemplateLayer 子类：同步构造 provider
+      const config = layer._buildProviderConfig()
+      layer._provider = new UrlTemplateImageryProvider(
+        config as UrlTemplateImageryProvider.ConstructorOptions,
+      )
+    }
   }
 
   /** 建立跨域关联：全部 Manager 实例化后逐个 init */

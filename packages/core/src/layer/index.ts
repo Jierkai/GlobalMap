@@ -1,3 +1,11 @@
 export { BaseLayer } from './BaseLayer'
 export { GraphicLayer } from './GraphicLayer'
 export { LayerManager } from './LayerManager'
+export { TdtLayer } from './TdtLayer'
+export { BaiduLayer } from './BaiduLayer'
+export { AmapLayer } from './AmapLayer'
+export { GoogleLayer } from './GoogleLayer'
+export { OsmLayer } from './OsmLayer'
+export { BingLayer } from './BingLayer'
+export { ArcGisLayer } from './ArcGisLayer'
+// UrlTemplateLayer 为内部基类，不导出

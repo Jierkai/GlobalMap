@@ -67,9 +67,9 @@ describe('Map3D', () => {
     })
     expect(map.viewer.container).toBe('map-container')
     // viewer 经 mock 创建，实例上记录了构造 options
-    expect((map.viewer as unknown as { options: Record<string, unknown> }).options).toEqual({
-      animation: false,
-    })
+    // 注：未传 basemapsLayer 时自动添加兜底 baseLayer（OSM），仅验证 animation 字段
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.animation).toBe(false)
   })
 
   it('map3d:ready 由构造触发，先 on 订阅的 listener 被调用一次', async () => {
@@ -202,8 +202,8 @@ describe('Map3D', () => {
   it('Map3DOptions 接受 layer/basemapsLayer 及各域占位配置（类型占位，运行时消费待图层域开发）', () => {
     const map = new Map3D({
       container: 'map-container',
-      layer: [{ type: 'graphic' }],
-      basemapsLayer: [{ name: 'arcgis' }],
+      layer: [{ type: 'graphic', options: {} }],
+      basemapsLayer: [{ type: 'osm', options: {}, name: 'OSM' }],
       plot: { bar: true },
       measure: { things: [] },
       roam: { speed: 10 },
@@ -215,6 +215,53 @@ describe('Map3D', () => {
     expect(map.destroyed).toBe(false)
     map.destroy()
     expect(map.destroyed).toBe(true)
+  })
+
+  it('basemapsLayer 传入后 viewerOptions 含 imageryProviderViewModels + baseLayer', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      basemapsLayer: [
+        { type: 'osm', options: {}, name: 'OpenStreetMap' },
+        { type: 'arcgis', options: { url: 'https://example.com/tile/{z}/{y}/{x}', useTileTemplate: true }, name: 'ArcGIS' },
+      ],
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.imageryProviderViewModels).toBeDefined()
+    expect(Array.isArray(opts.imageryProviderViewModels)).toBe(true)
+    expect((opts.imageryProviderViewModels as unknown[]).length).toBe(2)
+    expect(opts.selectedImageryProviderViewModel).toBeDefined()
+    expect(opts.baseLayer).toBeDefined()
+    map.destroy()
+  })
+
+  it('basemapsLayer 首项作为默认底图', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      basemapsLayer: [
+        { type: 'osm', options: {}, name: '首项底图' },
+      ],
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.baseLayer).toBeDefined()
+    map.destroy()
+  })
+
+  it('layer 配置项传入后各图层被 addLayer', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      layer: [
+        { type: 'graphic', options: { id: 'gl-1' } },
+      ],
+    })
+    expect(map.layer.hasLayer('gl-1')).toBe(true)
+    map.destroy()
+  })
+
+  it('未传 basemapsLayer 且未配 baseLayer -> 兜底 OSM', () => {
+    const map = new Map3D({ container: 'map-container' })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.baseLayer).toBeDefined()
+    map.destroy()
   })
 
   it('map.destroy 级联销毁 GraphicLayer 及其组内图元（layer->graphic 级联）', () => {

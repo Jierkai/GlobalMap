@@ -1,3 +1,14 @@
+import type {
+  TdtLayerOptions,
+  BaiduLayerOptions,
+  AmapLayerOptions,
+  GoogleLayerOptions,
+  OsmLayerOptions,
+  BingLayerOptions,
+  ArcGisLayerOptions,
+  GraphicLayerOptions,
+} from './layer'
+
 /**
  * Map3D 构造函数选项（设计文档 §5.9）。
  *
@@ -24,8 +35,27 @@ export interface Map3DOptions {
   scene?: Record<string, unknown>
 }
 
-/** 初始化图层项：图层未开发阶段先用 Record 占位，后续具体化为判别联合（按 type 区分图层种类） */
-export type LayerInitItem = Record<string, unknown>
+/** 初始化图层项：判别联合，按 type 区分图层种类（layer 与 basemapsLayer 共用） */
+export type LayerInitItem =
+  | { type: 'tdt'; options: TdtLayerOptions }
+  | { type: 'baidu'; options: BaiduLayerOptions }
+  | { type: 'amap'; options: AmapLayerOptions }
+  | { type: 'google'; options: GoogleLayerOptions }
+  | { type: 'osm'; options: OsmLayerOptions }
+  | { type: 'bing'; options: BingLayerOptions }
+  | { type: 'arcgis'; options: ArcGisLayerOptions }
+  | { type: 'graphic'; options: GraphicLayerOptions }
+// 后续新增图层类型在此扩展
 
-/** 底图项：影像源配置（名称/类型/url/层级等），先用 Record 占位 */
-export type BasemapItem = Record<string, unknown>
+/** 底图项：LayerInitItem + 底图选择器专用字段 */
+export type BasemapItem = LayerInitItem & {
+  /** 显示名称（baseLayerPicker 列表展示，缺省取图层实例的 name） */
+  name?: string
+  /** 图标 URL（baseLayerPicker 缩略图，缺省用 Cesium 内置图标） */
+  iconUrl?: string
+  /** tooltip 描述 */
+  tooltip?: string
+}
+
+/** 图层 type 字符串联合（用于工厂分发） */
+export type LayerTypeKey = LayerInitItem['type']

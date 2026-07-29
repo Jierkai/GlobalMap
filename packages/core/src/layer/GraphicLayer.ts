@@ -20,6 +20,16 @@ export class GraphicLayer extends BaseLayer {
   readonly type = 'graphic'
   private _graphics = new Map<string, BaseGraphic>()
 
+  /** 能否设置透明度：GraphicLayer 无 ImageryLayer，返回 false */
+  get hasOpacity(): boolean {
+    return false
+  }
+
+  /** 能否设置 zIndex：GraphicLayer 无 ImageryLayer，返回 false */
+  get hasZIndex(): boolean {
+    return false
+  }
+
   /** GraphicLayer 自身无 Cesium 图层实体，addToMap 为 noop（图元在 addGraphic 时各自 addToMap） */
   addToMap(): void {
     // noop
