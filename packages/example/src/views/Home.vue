@@ -9,6 +9,10 @@ import { caseNames } from '../router'
       <p>基于 Cesium 的 GlobalMap 示例集</p>
     </header>
     <main class="case-grid">
+      <router-link class="case-card hello" to="/hello">
+        <span class="case-name">HelloMap 调试器</span>
+        <span class="case-path">/hello</span>
+      </router-link>
       <router-link
         v-for="name in caseNames"
         :key="name"
@@ -60,6 +64,17 @@ import { caseNames } from '../router'
 
 .case-card:hover {
   box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+}
+
+.case-card.hello {
+  background: #1e1e1e;
+  border-color: #3c3c3c;
+}
+.case-card.hello .case-name {
+  color: #fff;
+}
+.case-card.hello .case-path {
+  color: #888;
 }
 
 .case-name {

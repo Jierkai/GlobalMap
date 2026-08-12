@@ -2,6 +2,7 @@ import { defineComponent, h, defineAsyncComponent, computed } from 'vue'
 import type { Component } from 'vue'
 import { createRouter, createWebHistory, useRoute } from 'vue-router'
 import Home from '../views/Home.vue'
+import HelloMap from '../views/HelloMap/index.vue'
 
 type AsyncComponentLoader = () => Promise<Component>
 
@@ -33,6 +34,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: Home },
+    { path: '/hello', name: 'hello', component: HelloMap },
     { path: '/case/:name', name: 'case', component: CaseView },
   ],
 })
