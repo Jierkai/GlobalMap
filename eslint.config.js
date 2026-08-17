@@ -20,8 +20,8 @@ export default [
     },
   },
   {
-    // 路由视图组件以单单词文件名命名（Home.vue 等），不属于可复用组件
-    files: ['**/views/**/*.vue'],
+    // 路由视图 / demo 页组件以单词或 index.vue 命名（Home.vue、demos/*/index.vue 等），不属于可复用组件
+    files: ['**/views/**/*.vue', '**/demos/**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
     },

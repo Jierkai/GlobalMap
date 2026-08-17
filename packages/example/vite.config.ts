@@ -4,9 +4,4 @@ import cesium from 'vite-plugin-cesium'
 
 export default defineConfig({
   plugins: [vue(), cesium()],
-  resolve: {
-    alias: {
-      '@': '/src',
-    },
-  },
 })

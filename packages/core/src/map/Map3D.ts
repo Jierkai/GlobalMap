@@ -16,8 +16,36 @@ import { AnalyseManager } from '../analyse'
 import { ControlManager } from '../control'
 import { SceneManager } from '../scene'
 import { resolveCesiumBaseUrl, createLayerFromInitItem } from '../util'
-import type { Disposable, Map3DOptions } from '../type'
+import type { Control, Disposable, Map3DOptions } from '../type'
 import type { BaseLayer } from '../layer'
+
+/**
+ * `Control` 中与 Cesium Viewer 构造参数一一对应的键子集：
+ * 构造时合并进 viewerOptions 参与 `new Cesium.Viewer()`，与 `viewerOptions` 同名键冲突时 `control` 优先。
+ * 其余扩展控件键（compass / zoom / locationBar 等）无 Viewer 对应项，
+ * 由 ControlManager 持有，待后续迭代消费。
+ */
+const CONTROL_VIEWER_KEYS = [
+  'animation',
+  'timeline',
+  'homeButton',
+  'baseLayerPicker',
+  'sceneModePicker',
+  'projectionPicker',
+  'fullscreenButton',
+  'fullscreenElement',
+  'vrButton',
+  'geocoder',
+  'navigationHelpButton',
+  'navigationInstructionsInitiallyVisible',
+  'imageryProviderViewModels',
+  'selectedImageryProviderViewModel',
+  'terrainProviderViewModels',
+  'selectedTerrainProviderViewModel',
+  'infoBox',
+  'selectionIndicator',
+  'showRenderLoopErrors',
+] as const satisfies readonly (keyof Control)[]
 
 /**
  * Map3D 组合根（设计文档 §5.1 / §5.2）。
@@ -60,6 +88,16 @@ export class Map3D implements Disposable {
 
     // -- 消费 basemapsLayer 配置项（设计文档 §4.3） --
     const viewerOptions: Record<string, unknown> = { ...options.viewerOptions }
+
+    // -- 消费 control 配置项 --
+    // Viewer 原生控件键合并进 viewerOptions（control 覆盖 viewerOptions 同名键）；
+    // 合并先于 basemapsLayer 处理，保证兜底底图逻辑能读到合并后的 baseLayerPicker。
+    if (options.control) {
+      for (const key of CONTROL_VIEWER_KEYS) {
+        const value = options.control[key]
+        if (value !== undefined) viewerOptions[key] = value
+      }
+    }
 
     if (options.basemapsLayer?.length) {
       const basemapLayers = options.basemapsLayer.map((item) => {
@@ -116,7 +154,7 @@ export class Map3D implements Disposable {
     this._roam = new RoamManager(this)
     this._effect = new EffectManager(this)
     this._analyse = new AnalyseManager(this)
-    this._control = new ControlManager(this)
+    this._control = new ControlManager(this, options.control)
     this._scene = new SceneManager(this)
     // 注册销毁栈（逆序销毁时 Manager 先于 Viewer）
     this._disposers.push(() => this._viewer.destroy())

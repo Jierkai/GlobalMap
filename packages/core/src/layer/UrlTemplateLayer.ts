@@ -1,9 +1,4 @@
-import {
-  UrlTemplateImageryProvider,
-  ImageryLayer,
-  Resource,
-  DefaultProxy,
-} from 'cesium'
+import { UrlTemplateImageryProvider, ImageryLayer, Resource, DefaultProxy } from 'cesium'
 import type { ImageryProvider } from 'cesium'
 import { BaseLayer } from './BaseLayer'
 import { ChinaCRS, LayerState } from '../type'
@@ -54,6 +49,11 @@ export abstract class UrlTemplateLayer extends BaseLayer {
   /** 底层 Cesium ImageryLayer */
   get layer(): ImageryLayer | undefined {
     return this._imageryLayer
+  }
+
+  /** 图层叠放顺序（options.zIndex；值越大越在上层，经 imageryLayers.raise 实现） */
+  get zIndex(): number | undefined {
+    return this._urlTemplateOptions.zIndex
   }
 
   // -- 内部方法 --

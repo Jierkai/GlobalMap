@@ -1,4 +1,5 @@
 export { BaseLayer } from './BaseLayer'
+export { LayerGroup } from './LayerGroup'
 export { GraphicLayer } from './GraphicLayer'
 export { LayerManager } from './LayerManager'
 export { TdtLayer } from './TdtLayer'

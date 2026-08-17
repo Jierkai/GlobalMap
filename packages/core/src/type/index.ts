@@ -2,6 +2,7 @@ export type { Disposable, Manager } from './disposable'
 export type { EventMap, BaseLayer } from './event'
 export type {
   Map3DOptions,
+  Control,
   LayerInitItem,
   BasemapItem,
   LayerTypeKey,

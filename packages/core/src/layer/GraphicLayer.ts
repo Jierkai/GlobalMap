@@ -4,7 +4,7 @@ import { BaseLayer } from './BaseLayer'
 /**
  * 图元图层（设计文档 §5.8）。
  *
- * Mars3D 式归属模型——图元不游离于全局，而是归属某个图层。
+ * 归属模型——图元不游离于全局，而是归属某个图层。
  * GraphicLayer 归属 layer 域，本质是一种"装图元的图层"。
  *
  * - extends BaseLayer，内部持有 Map<string, BaseGraphic>；

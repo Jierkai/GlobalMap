@@ -1,19 +1,68 @@
 import { vi } from 'vitest'
 
+/** 有状态的 ImageryLayerCollection mock：维护真实堆叠顺序，供 zIndex / 图层组排序断言 */
+function createImageryLayerCollection() {
+  const stack: ImageryLayer[] = []
+  return {
+    /** 测试辅助：当前堆叠（底 -> 顶） */
+    get _stack() {
+      return stack
+    },
+    get length() {
+      return stack.length
+    },
+    addImageryLayer: vi.fn((layer: ImageryLayer) => {
+      stack.push(layer)
+      return layer
+    }),
+    addImageryProvider: vi.fn((provider: unknown) => {
+      const layer = new ImageryLayer(provider)
+      stack.push(layer)
+      return layer
+    }),
+    remove: vi.fn((layer: ImageryLayer) => {
+      const i = stack.indexOf(layer)
+      if (i !== -1) stack.splice(i, 1)
+      return i !== -1
+    }),
+    indexOf: vi.fn((layer: ImageryLayer) => stack.indexOf(layer)),
+    raise: vi.fn((layer: ImageryLayer) => {
+      const i = stack.indexOf(layer)
+      if (i !== -1 && i < stack.length - 1) {
+        stack.splice(i, 1)
+        stack.splice(i + 1, 0, layer)
+      }
+    }),
+    lower: vi.fn((layer: ImageryLayer) => {
+      const i = stack.indexOf(layer)
+      if (i > 0) {
+        stack.splice(i, 1)
+        stack.splice(i - 1, 0, layer)
+      }
+    }),
+    raiseToTop: vi.fn((layer: ImageryLayer) => {
+      const i = stack.indexOf(layer)
+      if (i !== -1) {
+        stack.splice(i, 1)
+        stack.push(layer)
+      }
+    }),
+    lowerToBottom: vi.fn((layer: ImageryLayer) => {
+      const i = stack.indexOf(layer)
+      if (i !== -1) {
+        stack.splice(i, 1)
+        stack.unshift(layer)
+      }
+    }),
+  }
+}
+
 export class Viewer {
   container: string | HTMLElement
   options: Record<string, unknown>
   entities = { add: vi.fn(), remove: vi.fn() }
   scene = {}
-  imageryLayers = {
-    addImageryLayer: vi.fn((layer: unknown) => layer),
-    addImageryProvider: vi.fn((provider: unknown) => new ImageryLayer(provider)),
-    remove: vi.fn(),
-    raise: vi.fn(),
-    lower: vi.fn(),
-    raiseToTop: vi.fn(),
-    lowerToBottom: vi.fn(),
-  }
+  imageryLayers = createImageryLayerCollection()
   private _destroyed = false
 
   constructor(container: string | HTMLElement, options: Record<string, unknown> = {}) {

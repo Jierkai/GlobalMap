@@ -26,7 +26,8 @@ import { generateId } from '@globalmap/shared'
  * - `isAdded`：是否已添加到地图上；
  * - `isDestroy`：是否已销毁（与 `destroyed` 同义，语义化命名）；
  * - `layer`：底层 Cesium ImageryLayer；
- * - `state`：当前运行时状态（LayerState 枚举）。
+ * - `state`：当前运行时状态（LayerState 枚举）；
+ * - `zIndex`：图层叠放顺序（无 zIndex 概念的图层为 undefined）。
  */
 export abstract class BaseLayer implements Disposable {
   abstract readonly type: string
@@ -88,6 +89,11 @@ export abstract class BaseLayer implements Disposable {
   /** 是否已添加到地图上 */
   get isAdded(): boolean {
     return this._state === LayerState.ADDED
+  }
+
+  /** 图层叠放顺序（值越大越在上层；无 zIndex 概念的图层为 undefined，子类覆写） */
+  get zIndex(): number | undefined {
+    return undefined
   }
 
   /** 是否已销毁（与 destroyed 同义，语义化命名） */

@@ -72,6 +72,77 @@ describe('Map3D', () => {
     expect(opts.animation).toBe(false)
   })
 
+  it('control 配置：Viewer 原生控件键合并进 Viewer 构造 options', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      control: {
+        animation: false,
+        timeline: false,
+        homeButton: false,
+        baseLayerPicker: false,
+        sceneModePicker: false,
+        geocoder: false,
+        infoBox: false,
+        selectionIndicator: false,
+      },
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.animation).toBe(false)
+    expect(opts.timeline).toBe(false)
+    expect(opts.homeButton).toBe(false)
+    expect(opts.baseLayerPicker).toBe(false)
+    expect(opts.sceneModePicker).toBe(false)
+    expect(opts.geocoder).toBe(false)
+    expect(opts.infoBox).toBe(false)
+    expect(opts.selectionIndicator).toBe(false)
+    map.destroy()
+  })
+
+  it('control 覆盖 viewerOptions 同名键，未覆盖键保留', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      viewerOptions: { animation: true, timeline: true },
+      control: { animation: false },
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.animation).toBe(false)
+    expect(opts.timeline).toBe(true)
+    map.destroy()
+  })
+
+  it('control 的扩展控件键不传入 Viewer（留给 ControlManager）', () => {
+    const control = {
+      compass: true,
+      zoom: { insertIndex: 1 },
+      locationBar: { format: '层级：{level}' },
+      mouseDownView: true,
+    } as const
+    const map = new Map3D({
+      container: 'map-container',
+      control: { ...control },
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect('compass' in opts).toBe(false)
+    expect('zoom' in opts).toBe(false)
+    expect('locationBar' in opts).toBe(false)
+    expect('mouseDownView' in opts).toBe(false)
+    // 自定义控件配置原样透传给 ControlManager
+    const received = (map.control as unknown as { options: Record<string, unknown> }).options
+    expect(received).toEqual(control)
+    map.destroy()
+  })
+
+  it('control.baseLayerPicker=false 参与兜底底图判定（不再附加兜底 baseLayer）', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      control: { baseLayerPicker: false },
+    })
+    const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
+    expect(opts.baseLayerPicker).toBe(false)
+    expect('baseLayer' in opts).toBe(false)
+    map.destroy()
+  })
+
   it('map3d:ready 由构造触发，先 on 订阅的 listener 被调用一次', async () => {
     const map = createMap()
     const handler = vi.fn()
@@ -209,7 +280,7 @@ describe('Map3D', () => {
       roam: { speed: 10 },
       effect: { bloom: false },
       analyse: { viewshed: false },
-      control: { widgets: true },
+      control: { homeButton: false },
       scene: { sky: false },
     })
     expect(map.destroyed).toBe(false)

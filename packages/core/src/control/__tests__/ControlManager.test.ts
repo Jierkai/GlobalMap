@@ -15,6 +15,18 @@ describe('ControlManager（空壳契约）', () => {
     expect(() => map.control.init()).not.toThrow()
   })
 
+  it('接收 Map3DOptions.control 配置，缺省为空对象', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      control: { homeButton: false, compass: true },
+    })
+    const received = (map.control as unknown as { options: Record<string, unknown> }).options
+    expect(received).toEqual({ homeButton: false, compass: true })
+
+    const plain = new Map3D({ container: 'map-container' })
+    expect((plain.control as unknown as { options: Record<string, unknown> }).options).toEqual({})
+  })
+
   it('destroy 置 destroyed 且幂等', () => {
     const map = new Map3D({ container: 'map-container' })
     map.control.destroy()
