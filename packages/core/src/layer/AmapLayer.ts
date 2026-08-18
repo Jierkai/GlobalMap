@@ -60,6 +60,7 @@ export class AmapLayer extends UrlTemplateLayer {
       subdomains: '1234',
       maximumLevel: 20,
       chinaCRS: ChinaCRS.GCJ02,
+      zIndex: options.zIndex,
     })
     this._amapType = amapType
   }

@@ -13,19 +13,19 @@ export interface BaseLayerOptions {
   [key: string]: unknown
 }
 
-/** 天地图瓦片类型 */
+/** 天地图瓦片类型：img=卫星影像 / vec=矢量底图 / ter=地形晕渲 / cia=影像注记 / cva=矢量注记 / ctb/cvb=个性化 / ib/cta=特色专题 */
 export type TdtLayerType = 'img' | 'vec' | 'ter' | 'cia' | 'cva' | 'ctb' | 'cvb' | 'ib' | 'cta'
 
-/** 百度地图瓦片类型 */
+/** 百度地图瓦片类型：img=卫星影像 / vec=矢量底图 / ter=地形晕渲 / traffic=实时路况 */
 export type BaiduLayerType = 'img' | 'vec' | 'ter' | 'traffic'
 
-/** 高德地图瓦片类型 */
+/** 高德地图瓦片类型：img=卫星影像 / vec=矢量底图 / road=路网 / label=标注 / traffic=实时路况 */
 export type AmapLayerType = 'img' | 'vec' | 'road' | 'label' | 'traffic'
 
-/** 谷歌地图瓦片类型 */
+/** 谷歌地图瓦片类型：img=卫星影像 / vec=矢量底图 / ter=地形 / road=路网 / label=标注 */
 export type GoogleLayerType = 'img' | 'vec' | 'ter' | 'road' | 'label'
 
-/** Bing Maps 瓦片类型（与 BingLayerType 枚举的字符串值一致） */
+/** Bing Maps 瓦片类型（与 BingLayerType 枚举的字符串值一致）：aerial=影像 / road=道路 / collins=柯林斯暗色 / hybrid=影像+标注 */
 export type BingLayerTypeString = 'aerial' | 'road' | 'collins' | 'hybrid'
 
 /**
@@ -89,36 +89,71 @@ export interface UrlTemplateLayerOptions extends BaseLayerOptions {
   dayAlpha?: number
 }
 
+/**
+ * 子图层项（group 模式）：一项 LayerInitItem 展开为多个同类型瓦片图层（经 LayerGroup 统一挂载）。
+ *
+ * 典型场景：天地图影像 + 注记双层叠放、百度影像 + 路况叠加等。
+ */
+export interface LayerSubLayerItem {
+  /** 瓦片类型（即该厂商 options.type 的取值，如天地图 img / cia） */
+  layer: string
+  /** 子图层 id（缺省自动生成） */
+  id?: string
+  /** 父图层 id（归属标记，纯数据，便于业务侧树形管理） */
+  pid?: string
+  /** 显示名称 */
+  name?: string
+  /** 初始可见性（缺省继承父项 show） */
+  show?: boolean
+  /** 叠放顺序（值越大越在上层；组内按 zIndex 升序挂载） */
+  zIndex?: number
+  [key: string]: unknown
+}
+
+/** 支持 group 子图层集合的构造项（瓦片类图层通用） */
+export interface GroupableLayerOptions {
+  /** 子图层集合：存在且非空时，图层项展开为 LayerGroup（成员为同 type 的多个瓦片图层） */
+  group?: LayerSubLayerItem[]
+}
+
 /** 天地图图层构造项 */
-export interface TdtLayerOptions extends BaseLayerOptions {
+export interface TdtLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** 天地图开发者 token（必填，缺省读全局 key） */
   token?: string
+  /** 叠放顺序（值越大越在上层） */
+  zIndex?: number
   /** 图层类型：img=卫星影像 / vec=矢量底图 / ter=地形 / cia=影像注记 / cva=矢量注记 */
   type?: TdtLayerType
 }
 
 /** 百度地图图层构造项 */
-export interface BaiduLayerOptions extends BaseLayerOptions {
+export interface BaiduLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** 百度地图 AK（可选） */
   ak?: string
   /** 图层类型 */
   type?: BaiduLayerType
+  /** 叠放顺序（值越大越在上层） */
+  zIndex?: number
   /** 自定义样式 ID */
   styleId?: string
 }
 
 /** 高德地图图层构造项 */
-export interface AmapLayerOptions extends BaseLayerOptions {
+export interface AmapLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** 高德地图 key（可选） */
   key?: string
   /** 图层类型 */
   type?: AmapLayerType
+  /** 叠放顺序（值越大越在上层） */
+  zIndex?: number
 }
 
 /** 谷歌地图图层构造项 */
-export interface GoogleLayerOptions extends BaseLayerOptions {
+export interface GoogleLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** 图层类型 */
   type?: GoogleLayerType
+  /** 叠放顺序（值越大越在上层） */
+  zIndex?: number
   /** 语言（默认 zh-CN） */
   language?: string
   /** 区域（默认 CN） */
@@ -126,17 +161,19 @@ export interface GoogleLayerOptions extends BaseLayerOptions {
 }
 
 /** OpenStreetMap 图层构造项 */
-export interface OsmLayerOptions extends BaseLayerOptions {
+export interface OsmLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** 自定义瓦片服务器 URL（默认官方） */
   url?: string
   /** 自定义子域名（默认 a/b/c） */
   subdomains?: string[]
+  /** 叠放顺序（值越大越在上层） */
+  zIndex?: number
   /** 最大缩放级别 */
   maximumLevel?: number
 }
 
 /** Bing Maps 图层构造项 */
-export interface BingLayerOptions extends BaseLayerOptions {
+export interface BingLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** Bing Maps API key（必填，缺省读全局 key） */
   key?: string
   /** 图层类型 */
@@ -146,7 +183,7 @@ export interface BingLayerOptions extends BaseLayerOptions {
 }
 
 /** ArcGIS Server 图层构造项 */
-export interface ArcGisLayerOptions extends BaseLayerOptions {
+export interface ArcGisLayerOptions extends BaseLayerOptions, GroupableLayerOptions {
   /** ArcGIS MapServer URL */
   url: string
   /** 是否使用瓦片模板直连模式（默认 false，走 fromUrl 异步元数据） */

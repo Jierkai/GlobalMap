@@ -49,6 +49,7 @@ export class GoogleLayer extends UrlTemplateLayer {
       url,
       subdomains: '0123',
       maximumLevel: 20,
+      zIndex: options.zIndex,
     })
     this._googleType = googleType
   }

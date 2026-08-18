@@ -144,16 +144,22 @@ export interface Control {
 }
 
 /** 初始化图层项：判别联合，按 type 区分图层种类（layer 与 basemapsLayer 共用） */
+/**
+ * 图层初始化项（Map3DOptions.layer / basemapsLayer 的元素，layerFactory 据此创建图层）。
+ *
+ * 瓦片类（tdt/baidu/amap/google/osm/bing/arcgis）支持 options.group 子图层集合：
+ * 一项展开为 LayerGroup（多个同 type 瓦片叠放，如天地图影像 + 注记），见 {@link GroupableLayerOptions}。
+ */
 export type LayerInitItem =
-  | { type: 'tdt'; options: TdtLayerOptions }
-  | { type: 'baidu'; options: BaiduLayerOptions }
-  | { type: 'amap'; options: AmapLayerOptions }
-  | { type: 'google'; options: GoogleLayerOptions }
-  | { type: 'osm'; options: OsmLayerOptions }
-  | { type: 'bing'; options: BingLayerOptions }
-  | { type: 'arcgis'; options: ArcGisLayerOptions }
-  | { type: 'graphic'; options: GraphicLayerOptions }
-  | { type: 'primitive'; options: PrimitiveLayerOptions }
+  | { type: 'tdt'; options: TdtLayerOptions } // 天地图瓦片（需 token；img/vec/ter/cia/cva 等）
+  | { type: 'baidu'; options: BaiduLayerOptions } // 百度瓦片（BD09 坐标系，img/vec/ter/traffic）
+  | { type: 'amap'; options: AmapLayerOptions } // 高德瓦片（GCJ02 坐标系，img/vec/road/label/traffic）
+  | { type: 'google'; options: GoogleLayerOptions } // 谷歌瓦片（img/vec/ter/road/label）
+  | { type: 'osm'; options: OsmLayerOptions } // OpenStreetMap 开放瓦片（免 key）
+  | { type: 'bing'; options: BingLayerOptions } // Bing Maps 瓦片（需 key；aerial/road/hybrid）
+  | { type: 'arcgis'; options: ArcGisLayerOptions } // ArcGIS MapServer 服务（需服务 URL）
+  | { type: 'graphic'; options: GraphicLayerOptions } // Entity 系图元图层（业务图元容器）
+  | { type: 'primitive'; options: PrimitiveLayerOptions } // Primitive 系图元图层（高性能海量图元容器）
 // 后续新增图层类型在此扩展
 
 /** 底图项：LayerInitItem + 底图选择器专用字段 */

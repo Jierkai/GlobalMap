@@ -42,6 +42,7 @@ export class BaiduLayer extends UrlTemplateLayer {
       subdomains: '012',
       maximumLevel: 19,
       chinaCRS: ChinaCRS.BD09,
+      zIndex: options.zIndex,
     })
     this._baiduType = baiduType
   }

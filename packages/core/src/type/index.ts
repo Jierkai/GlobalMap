@@ -26,6 +26,8 @@ export type {
   ArcGisLayerOptions,
   GraphicLayerOptions,
   PrimitiveLayerOptions,
+  LayerSubLayerItem,
+  GroupableLayerOptions,
   TdtLayerType,
   BaiduLayerType,
   AmapLayerType,

@@ -20,6 +20,7 @@ export class OsmLayer extends UrlTemplateLayer {
       subdomains: options.subdomains ?? ['a', 'b', 'c'],
       maximumLevel: 19,
       credit: 'OpenStreetMap contributors',
+      zIndex: options.zIndex,
     })
   }
 }

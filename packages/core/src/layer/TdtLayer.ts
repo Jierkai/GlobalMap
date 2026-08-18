@@ -28,6 +28,7 @@ export class TdtLayer extends UrlTemplateLayer {
       subdomains: '01234567',
       maximumLevel: 18,
       credit: 'Tianditu',
+      zIndex: options.zIndex,
     })
     this._tdtType = tdtType
   }
