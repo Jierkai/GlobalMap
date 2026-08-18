@@ -8,6 +8,7 @@ import { OsmLayer } from '../layer/OsmLayer'
 import { BingLayer } from '../layer/BingLayer'
 import { ArcGisLayer } from '../layer/ArcGisLayer'
 import { GraphicLayer } from '../layer/GraphicLayer'
+import { PrimitiveLayer } from '../layer/PrimitiveLayer'
 
 /**
  * 图层工厂：根据 LayerInitItem 创建对应图层实例（图层域设计文档 §4.4）。
@@ -32,11 +33,11 @@ export function createLayerFromInitItem(item: LayerInitItem): BaseLayer {
       return new ArcGisLayer(item.options)
     case 'graphic':
       return new GraphicLayer(item.options)
+    case 'primitive':
+      return new PrimitiveLayer(item.options)
     default: {
       const exhaustive: never = item
-      throw new Error(
-        `[GlobalMap] 未知图层类型: ${(exhaustive as { type: string }).type}`,
-      )
+      throw new Error(`[GlobalMap] 未知图层类型: ${(exhaustive as { type: string }).type}`)
     }
   }
 }

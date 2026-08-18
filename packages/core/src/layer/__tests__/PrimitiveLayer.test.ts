@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { Viewer } from 'cesium'
-import { GraphicLayer } from '../GraphicLayer'
+import { Viewer, Color } from 'cesium'
+import { PrimitiveLayer } from '../PrimitiveLayer'
 import { EventBus } from '../../event'
 import { BaseGraphic } from '../../graphic'
+import { PointPrimitive } from '../../primitive'
 import type { GraphicStyle } from '../../type'
 
 vi.mock('cesium')
@@ -24,22 +25,29 @@ function makeEventBus() {
 
 const style: GraphicStyle = {}
 
-/** 构造一个已 bind 的 GraphicLayer（晚期绑定：addLayer 时由 LayerManager 经 _bind 注入） */
+/** 构造一个已 bind 的 PrimitiveLayer（晚期绑定：addLayer 时由 LayerManager 经 _bind 注入） */
 function makeLayer(id = 'layer-1') {
-  const layer = new GraphicLayer({ id })
+  const layer = new PrimitiveLayer({ id })
   const viewer = makeViewer()
   const eventBus = makeEventBus()
   layer._bind(viewer, eventBus)
   return { layer, viewer, eventBus }
 }
 
-describe('GraphicLayer', () => {
-  it('是一种 BaseLayer，type 为 graphic，id 透传', () => {
+describe('PrimitiveLayer', () => {
+  it('是一种 BaseLayer，type 为 primitive，id 透传', () => {
     const { layer } = makeLayer('layer-1')
-    expect(layer.type).toBe('graphic')
+    expect(layer.type).toBe('primitive')
     expect(layer.id).toBe('layer-1')
     expect(layer.show).toBe(true)
     expect(layer.destroyed).toBe(false)
+  })
+
+  it('无 ImageryLayer 实体：hasOpacity / hasZIndex 为 false，addToMap 为 noop', () => {
+    const { layer } = makeLayer()
+    expect(layer.hasOpacity).toBe(false)
+    expect(layer.hasZIndex).toBe(false)
+    expect(() => layer.addToMap()).not.toThrow()
   })
 
   it('addGraphic 经 _bind 注入 layerId、调用 graphic._addToMap、emit graphic:added，返回 this 链式', () => {
@@ -124,9 +132,69 @@ describe('GraphicLayer', () => {
     expect(layer.destroyed).toBe(true)
   })
 
-  it('未 bind 时 addGraphic 抛错（依赖 viewer/eventBus）', () => {
-    const layer = new GraphicLayer({ id: 'layer-1' })
+  it('未 bind 时 addGraphic 不抛错（离线组装：仅登记缓存，挂载时统一上屏）', () => {
+    const layer = new PrimitiveLayer({ id: 'layer-1' })
     const graphic = new FakeGraphic({ id: 'g1', style })
-    expect(() => layer.addGraphic(graphic)).toThrow(/bind|绑定/i)
+    expect(() => layer.addGraphic(graphic)).not.toThrow()
+    expect(layer.hasGraphic('g1')).toBe(true)
+    expect(graphic._addToMap).not.toHaveBeenCalled()
+  })
+
+  it('离线组装：未 bind 时 addGraphic 缓存，addLayer 挂载后统一 bind + 上屏 + emit graphic:added', () => {
+    const layer = new PrimitiveLayer({ id: 'layer-1' })
+    const g1 = new FakeGraphic({ id: 'g1', style })
+    const g2 = new FakeGraphic({ id: 'g2', style })
+    layer.addGraphic(g1).addGraphic(g2)
+    expect(g1._addToMap).not.toHaveBeenCalled()
+
+    // 模拟 addLayer：LayerManager 顺序 _bind -> addToMap
+    const viewer = makeViewer()
+    const eventBus = makeEventBus()
+    const handler = vi.fn()
+    eventBus.on('graphic:added', handler)
+    layer._bind(viewer, eventBus)
+    layer.addToMap()
+
+    expect(g1._addToMap).toHaveBeenCalledTimes(1)
+    expect(g2._addToMap).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledTimes(2)
+    expect(handler).toHaveBeenNthCalledWith(1, { layerId: 'layer-1', graphic: g1 })
+  })
+
+  it('共享点集合：多个点图元复用同一 PointPrimitiveCollection，removeGraphic 只删自己的点', () => {
+    const { layer, viewer } = makeLayer()
+    const p1 = new PointPrimitive({ id: 'p1', position: [116.1, 39.1] })
+    const p2 = new PointPrimitive({ id: 'p2', position: [116.4, 39.9] })
+    layer.addGraphic(p1).addGraphic(p2)
+
+    const primitives = (viewer.scene as unknown as { primitives: { _items: unknown[] } }).primitives
+    // 两个点 -> 仅 1 个共享集合（一个 draw call）
+    expect(primitives._items).toHaveLength(1)
+    const collection = primitives._items[0] as { _all: unknown[] }
+    expect(collection._all).toHaveLength(2)
+
+    // 移除 p1：只删自己的点，p2 与集合不受影响
+    layer.removeGraphic('p1')
+    expect(primitives._items).toHaveLength(1)
+    expect(collection._all).toHaveLength(1)
+
+    // 移除 p2：最后一个点释放后集合卸载
+    layer.removeGraphic('p2')
+    expect(primitives._items).toHaveLength(0)
+  })
+
+  it('端到端：点图元经 PrimitiveLayer 挂载后进入 viewer.scene.primitives（图元不可直连 map）', () => {
+    const { layer, viewer } = makeLayer()
+    const point = new PointPrimitive({
+      id: 'p1',
+      position: [116.4, 39.9],
+      style: { color: Color.RED },
+    })
+    layer.addGraphic(point)
+    const primitives = (viewer.scene as unknown as { primitives: { _items: unknown[] } }).primitives
+    expect(primitives._items).toHaveLength(1)
+
+    layer.removeGraphic('p1')
+    expect(primitives._items).toHaveLength(0)
   })
 })

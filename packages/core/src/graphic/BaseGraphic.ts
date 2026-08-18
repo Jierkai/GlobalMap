@@ -19,9 +19,13 @@ export abstract class BaseGraphic<
   readonly style: TStyle
   protected _show: boolean
   protected _destroyed = false
+  /** 是否已上屏（_addToMap 置 true，_removeFromMap 置 false；图层挂载时用于跳过已上屏图元） */
+  protected _added = false
   protected _viewer?: Viewer
   protected _eventBus?: EventBus
   protected _layerId?: string
+  /** 所属图层实例（由 _bind 注入；PrimitiveLayer 等宿主借此向图元提供共享渲染容器） */
+  protected _layer?: unknown
 
   constructor(options: BaseGraphicOptions<TStyle>) {
     this.id = options.id ?? generateId('graphic')
@@ -51,30 +55,39 @@ export abstract class BaseGraphic<
     return this._destroyed
   }
 
+  /** 是否已上屏（已挂载到底层渲染容器） */
+  get isAdded(): boolean {
+    return this._added
+  }
+
   /**
    * 内部晚期绑定：addGraphic 时由 GraphicLayer 调用，不暴露给用户。
    * 已绑定到另一 viewer 时抛错；同 viewer 同 eventBus 幂等。
    * style.show 初始值在 bind 时同步一次。
    */
-  _bind(viewer: Viewer, eventBus: EventBus, layerId: string): void {
+  _bind(viewer: Viewer, eventBus: EventBus, layerId: string, layer?: unknown): void {
     if (this._viewer && this._viewer !== viewer) {
       throw new Error(`[BaseGraphic] 图元 "${this.id}" 已绑定到另一个图层，不可重复绑定`)
     }
     this._viewer = viewer
     this._eventBus = eventBus
     this._layerId = layerId
+    this._layer = layer
     // 同步初始 show
     this._updateShow(this._show)
   }
 
-  abstract addToMap(): void
-  abstract removeFromMap(): void
+  /** 内部：挂载到底层渲染容器（由所属图层在 addGraphic/挂载时驱动，不暴露给用户） */
+  abstract _addToMap(): void
+
+  /** 内部：从底层渲染容器移除（由所属图层驱动，不暴露给用户） */
+  abstract _removeFromMap(): void
   /** 内部：同步实际可见性。供 GraphicLayer 级联调用（下划线约定 internal，跨类访问需 public）。 */
   abstract _updateShow(show: boolean): void
 
   destroy(): void {
     if (this._destroyed) return
     this._destroyed = true
-    this.removeFromMap()
+    this._removeFromMap()
   }
 }

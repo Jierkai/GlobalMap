@@ -1,6 +1,7 @@
 export { BaseLayer } from './BaseLayer'
 export { LayerGroup } from './LayerGroup'
 export { GraphicLayer } from './GraphicLayer'
+export { PrimitiveLayer } from './PrimitiveLayer'
 export { LayerManager } from './LayerManager'
 export { TdtLayer } from './TdtLayer'
 export { BaiduLayer } from './BaiduLayer'

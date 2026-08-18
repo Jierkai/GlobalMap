@@ -1,4 +1,5 @@
 import { helloMapCode } from './hello-map/code'
+import { primitiveLayerCode } from './primitive-layer/code'
 
 /**
  * Demo 注册表：主页案例画廊与示例路由的唯一数据源。
@@ -32,6 +33,12 @@ export const demos: DemoEntry[] = [
     title: '地球初始化',
     description: '最简单的地球：basemapsLayer 配置项初始化',
     code: helloMapCode,
+  },
+  {
+    name: 'primitive-layer',
+    title: '图元Layer（点线面）',
+    description: 'PrimitiveLayer 统一管理图元：图元先入图层，图层再入 map',
+    code: primitiveLayerCode,
   },
   // 后续功能 demo 在此逐条填充（1.0 版本开发完毕后按功能域补齐）。
 ]

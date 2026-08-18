@@ -178,6 +178,11 @@ export abstract class BaseLayer implements Disposable {
   abstract removeFromMap(): void
   protected abstract _updateShow(show: boolean): void
 
+  /** 内部钩子：addToMap 完成后回调（子类可覆写，如 PrimitiveLayer 统一挂载缓存图元） */
+  protected _onMounted(): void {
+    // 默认 noop
+  }
+
   destroy(): void {
     if (this._destroyed) return
     this._destroyed = true

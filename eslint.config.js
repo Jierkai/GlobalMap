@@ -5,7 +5,7 @@ import prettier from 'eslint-config-prettier'
 
 export default [
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/.vitepress/cache/**', '**/node_modules/**'],
+    ignores: ['**/dist/**', '**/coverage/**', '**/.vitepress/cache/**', '**/.vitepress/.temp/**', '**/node_modules/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

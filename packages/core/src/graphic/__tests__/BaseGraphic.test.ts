@@ -13,8 +13,8 @@ interface DemoStyle extends GraphicStyle {
 
 class FakeGraphic extends BaseGraphic<DemoStyle> {
   readonly type = 'fake'
-  addToMap = vi.fn()
-  removeFromMap = vi.fn()
+  _addToMap = vi.fn()
+  _removeFromMap = vi.fn()
   _updateShow = vi.fn()
 }
 
@@ -123,7 +123,7 @@ describe('BaseGraphic 晚期绑定 + options 构造', () => {
     graphic._bind(viewer, eventBus, 'layer-1')
     graphic.destroy()
     expect(graphic.destroyed).toBe(true)
-    expect(graphic.removeFromMap).toHaveBeenCalledTimes(1)
+    expect(graphic._removeFromMap).toHaveBeenCalledTimes(1)
   })
 
   it('二次 destroy 无副作用（幂等）', () => {
@@ -133,7 +133,7 @@ describe('BaseGraphic 晚期绑定 + options 构造', () => {
     graphic._bind(viewer, eventBus, 'layer-1')
     graphic.destroy()
     graphic.destroy()
-    expect(graphic.removeFromMap).toHaveBeenCalledTimes(1)
+    expect(graphic._removeFromMap).toHaveBeenCalledTimes(1)
     expect(graphic.destroyed).toBe(true)
   })
 

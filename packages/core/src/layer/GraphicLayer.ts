@@ -38,7 +38,7 @@ export class GraphicLayer extends BaseLayer {
   /** 从 map 移除：级联移除全部未销毁图元 */
   removeFromMap(): void {
     for (const graphic of this._graphics.values()) {
-      if (!graphic.destroyed) graphic.removeFromMap()
+      if (!graphic.destroyed) graphic._removeFromMap()
     }
   }
 
@@ -59,8 +59,8 @@ export class GraphicLayer extends BaseLayer {
     }
     this._graphics.set(graphic.id, graphic)
     // 晚期绑定：注入 viewer/eventBus/layerId（设计 §5.6/§5.8）
-    graphic._bind(this._viewer, this._eventBus, this.id)
-    graphic.addToMap()
+    graphic._bind(this._viewer, this._eventBus, this.id, this)
+    graphic._addToMap()
     this._eventBus.emit('graphic:added', { layerId: this.id, graphic })
     return this
   }

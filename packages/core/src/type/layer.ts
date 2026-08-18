@@ -157,3 +157,6 @@ export interface ArcGisLayerOptions extends BaseLayerOptions {
 
 /** GraphicLayer 构造项（复用 BaseLayerOptions） */
 export type GraphicLayerOptions = BaseLayerOptions
+
+/** PrimitiveLayer（图元Layer）构造项（复用 BaseLayerOptions） */
+export type PrimitiveLayerOptions = BaseLayerOptions

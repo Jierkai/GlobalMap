@@ -8,6 +8,7 @@ import type {
   BingLayerOptions,
   ArcGisLayerOptions,
   GraphicLayerOptions,
+  PrimitiveLayerOptions,
 } from './layer'
 
 /**
@@ -152,6 +153,7 @@ export type LayerInitItem =
   | { type: 'bing'; options: BingLayerOptions }
   | { type: 'arcgis'; options: ArcGisLayerOptions }
   | { type: 'graphic'; options: GraphicLayerOptions }
+  | { type: 'primitive'; options: PrimitiveLayerOptions }
 // 后续新增图层类型在此扩展
 
 /** 底图项：LayerInitItem + 底图选择器专用字段 */

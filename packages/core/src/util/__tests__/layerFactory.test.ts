@@ -8,6 +8,7 @@ import { OsmLayer } from '../../layer/OsmLayer'
 import { BingLayer } from '../../layer/BingLayer'
 import { ArcGisLayer } from '../../layer/ArcGisLayer'
 import { GraphicLayer } from '../../layer/GraphicLayer'
+import { PrimitiveLayer } from '../../layer/PrimitiveLayer'
 import { _clearMapKeys } from '../../util/keys'
 
 vi.mock('cesium')
@@ -59,5 +60,11 @@ describe('createLayerFromInitItem', () => {
   it('type=graphic 创建 GraphicLayer', () => {
     const layer = createLayerFromInitItem({ type: 'graphic', options: {} })
     expect(layer).toBeInstanceOf(GraphicLayer)
+  })
+
+  it('type=primitive 创建 PrimitiveLayer', () => {
+    const layer = createLayerFromInitItem({ type: 'primitive', options: {} })
+    expect(layer).toBeInstanceOf(PrimitiveLayer)
+    expect(layer.type).toBe('primitive')
   })
 })

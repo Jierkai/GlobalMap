@@ -41,9 +41,9 @@ GlobalMap/
 ```
 map/        Map3D 根类（组合入口）
 event/      EventBus 事件系统
-layer/      图层管理（含 GraphicLayer；未来 PrimitiveLayer：图层管理图元）
+layer/      图层管理（含 GraphicLayer / PrimitiveLayer：图层管理图元）
 graphic/    业务图元（BaseGraphic 及 Entity 系实现，由 GraphicLayer 持有，无 Manager）
-primitive/  底层图元（Primitive 系实现，由未来 PrimitiveLayer 持有，无 Manager）
+primitive/  底层图元（Primitive 系点/线/面图元实现，由 PrimitiveLayer 持有，无 Manager）
 plot/       标绘            measure/    测量
 roam/       漫游            effect/     特效
 analyse/    空间分析    control/    UI 控件
@@ -65,6 +65,7 @@ Map3D 构造时序：`resolveCesiumBaseUrl()`（自动识别）-> 创建 `Cesium
 - **EventBus**：`on` 返回取消订阅函数；`void` 负载事件无参 emit；destroy 幂等，销毁后 emit 静默。
 - **BaseLayer / BaseGraphic（晚期绑定）**：构造只收 **options 对象**（`id?` 缺省经 `generateId()` 随机生成、`show?` 声明初始可见性；BaseGraphic 的 options 内含必填 `style`，泛型 `<TStyle extends GraphicStyle>`）；不接触 map 内部。`viewer`/`eventBus` 在 `addLayer`/`addGraphic` 时由框架经 `_bind()` 注入。守卫：重复 bind 到不同 map 抛错；未 bind 触发依赖行为抛错。`show` setter 去重 → `_updateShow` → emit `*:showChanged`；destroy 幂等调 `removeFromMap`。
 - **GraphicLayer（layer 域）**：`GraphicLayer extends BaseLayer`，是一种"装图元的图层"。`addGraphic/removeGraphic/getGraphic/hasGraphic/getAllGraphics` 链式；图层 `show`/`destroy` **级联**组内图元；图元事件（`graphic:added/removed/showChanged`）由所属 GraphicLayer 发出，负载带 `layerId`。**无 `map.graphic`**。
+- **PrimitiveLayer（图元Layer，layer 域）**：`PrimitiveLayer extends BaseLayer`，与 GraphicLayer 平级，是 **Primitive 系图元的统一管理器**（承载 primitive/ 目录图元：PointPrimitive 点 / PolylinePrimitive 线 / PolygonPrimitive 面，基于 Cesium Primitive API）。**归属契约：图元先经 `addGraphic` 入图层，图层再经 `map.layer.addLayer` 入 map；图元不能直接添加到 Map 实例**（Map3D 无图元直挂 API）。`layer` 配置项支持 `{ type: 'primitive' }` 声明式初始化。
 - **Cesium 静态资源（零配置）**：`Map3DOptions` **不暴露 `cesiumBaseUrl`**，库内部自动识别--① `window.CESIUM_BASE_URL` 已设（npm 依赖：vite-plugin-cesium / DefinePlugin 自动注入） > ② script 标签探测（lib 场景：Cesium.js 的 src 推导） > ③ 约定值 `/cesium` + dev 警告。npm 依赖装插件即零配置，lib 场景 script 引入即零配置。`setCesiumBaseUrl()` 已删除。
 - **Map3DOptions 初始化配置**：含 `container`/`viewerOptions`，支持 `layer`（初始化图层集合）、`basemapsLayer`（Cesium 底图集合，首项默认）；`plot`/`measure`/`roam`/`effect`/`analyse`/`control`/`scene` 等未开发域先以 `Record<string, unknown>` 占位（`measure` 对齐 Mars3D thing 类），各域开发时再具体化。**Manager 充要条件：管理有生命周期的能力实例且依赖 viewer；不满足者降级为工具（material/transform/resource 已删）**。
 - **Manager**：构造仅收 `(map3d, options?)`；方法返回 `this` 支持链式；`init()` 不暴露给用户。
@@ -93,7 +94,8 @@ pnpm changeset      # 变更集（发版流程：changeset → version → publi
 - [ ] **批次 8 补充 2：cesiumBaseUrl 删除 + 零配置自动识别**（2026-07-28 决策，plan.md §4.3 任务 42–43）：core 实现 `resolveCesiumBaseUrl()` 自动识别（全局已设 > script 探测 > 约定值 + 警告），删除 `setCesiumBaseUrl`；BasicMap 零配置验证，docs 改写为“零配置”
 - [ ] **批次 8 补充 3：删除 material/transform/resource 三个 Manager**（2026-07-28 二轮审计，plan.md §4.4 任务 44）：Manager 充要条件是“管理有生命周期的能力实例且依赖 viewer”--材质是图元 style、坐标转换是纯计算、资源加载分散到各域；三者降级为工具，11->8 getter
 - [ ] **Finishing 阶段**：收尾验收
-- [ ] **功能域开发（待规划）**：8 个 Manager 目前为骨架，首个开发域为**图层**（含 GraphicLayer/PrimitiveLayer 与 layer/basemapsLayer 初始化集合具体化）；其余各域真实功能（图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页（BasicMap 已改为空演示），docs 同步补充 guide/api
+- [x] **图层域：PrimitiveLayer（图元Layer）+ Primitive 系点/线/面图元**（2026-08-17）：`PrimitiveLayer extends BaseLayer`（layer 域，Primitive 系图元统一管理器，级联显隐/销毁，复用 graphic:\* 事件带 layerId）；primitive/ 目录落地 PointPrimitive / PolylinePrimitive / PolygonPrimitive（extends BaseGraphic，Cesium Primitive API 渲染，几何走 options、样式走 style）；`layer` 配置项新增 `{ type: 'primitive' }` 判别分支 + 工厂分发。308 测试全绿（shared 47 + core 261，含 Map3D 端到端级联守护）、4 包构建通过、example 新增 primitive-layer 案例页
+- [ ] **功能域开发（待规划）**：图层域已完成（7 厂商瓦片图层 + basemapsLayer + GraphicLayer + PrimitiveLayer/点线面图元）；其余各域真实功能（Entity 系图元绘制、标绘、测量、漫游、特效、分析等）按设计文档 §5 签名逐个域实现，example 同步补充对应案例页，docs 同步补充 guide/api
 
 ## 6. 环境坑位（勿踩）
 

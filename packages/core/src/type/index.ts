@@ -1,13 +1,19 @@
 export type { Disposable, Manager } from './disposable'
 export type { EventMap, BaseLayer } from './event'
+export type { Map3DOptions, Control, LayerInitItem, BasemapItem, LayerTypeKey } from './map'
 export type {
-  Map3DOptions,
-  Control,
-  LayerInitItem,
-  BasemapItem,
-  LayerTypeKey,
-} from './map'
-export type { BaseGraphic, GraphicStyle, MeasureResult, BaseGraphicOptions } from './graphic'
+  BaseGraphic,
+  GraphicStyle,
+  MeasureResult,
+  BaseGraphicOptions,
+  LngLatPosition,
+  PointPrimitiveStyle,
+  PointPrimitiveOptions,
+  PolylinePrimitiveStyle,
+  PolylinePrimitiveOptions,
+  PolygonPrimitiveStyle,
+  PolygonPrimitiveOptions,
+} from './graphic'
 export type {
   BaseLayerOptions,
   UrlTemplateLayerOptions,
@@ -19,6 +25,7 @@ export type {
   BingLayerOptions,
   ArcGisLayerOptions,
   GraphicLayerOptions,
+  PrimitiveLayerOptions,
   TdtLayerType,
   BaiduLayerType,
   AmapLayerType,

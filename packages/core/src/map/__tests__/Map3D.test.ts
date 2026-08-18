@@ -3,6 +3,8 @@ import { Map3D } from '../Map3D'
 import { EventBus } from '../../event'
 import { LayerManager } from '../../layer/LayerManager'
 import { GraphicLayer } from '../../layer/GraphicLayer'
+import { PrimitiveLayer } from '../../layer/PrimitiveLayer'
+import { PointPrimitive } from '../../primitive'
 import { BaseGraphic } from '../../graphic'
 import { PlotManager } from '../../plot/PlotManager'
 import { MeasureManager } from '../../measure/MeasureManager'
@@ -18,8 +20,8 @@ vi.mock('cesium')
 /** 最小图元子类（供 GraphicLayer 级联销毁测试） */
 class FakeGraphic extends BaseGraphic {
   readonly type = 'fake'
-  addToMap = vi.fn()
-  removeFromMap = vi.fn()
+  _addToMap = vi.fn()
+  _removeFromMap = vi.fn()
   _updateShow = vi.fn()
 }
 const fakeStyle: GraphicStyle = {}
@@ -293,7 +295,11 @@ describe('Map3D', () => {
       container: 'map-container',
       basemapsLayer: [
         { type: 'osm', options: {}, name: 'OpenStreetMap' },
-        { type: 'arcgis', options: { url: 'https://example.com/tile/{z}/{y}/{x}', useTileTemplate: true }, name: 'ArcGIS' },
+        {
+          type: 'arcgis',
+          options: { url: 'https://example.com/tile/{z}/{y}/{x}', useTileTemplate: true },
+          name: 'ArcGIS',
+        },
       ],
     })
     const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
@@ -308,23 +314,24 @@ describe('Map3D', () => {
   it('basemapsLayer 首项作为默认底图', () => {
     const map = new Map3D({
       container: 'map-container',
-      basemapsLayer: [
-        { type: 'osm', options: {}, name: '首项底图' },
-      ],
+      basemapsLayer: [{ type: 'osm', options: {}, name: '首项底图' }],
     })
     const opts = (map.viewer as unknown as { options: Record<string, unknown> }).options
     expect(opts.baseLayer).toBeDefined()
     map.destroy()
   })
 
-  it('layer 配置项传入后各图层被 addLayer', () => {
+  it('layer 配置项传入后各图层被 addLayer（含 graphic / primitive 两类图元图层）', () => {
     const map = new Map3D({
       container: 'map-container',
       layer: [
         { type: 'graphic', options: { id: 'gl-1' } },
+        { type: 'primitive', options: { id: 'pl-1' } },
       ],
     })
     expect(map.layer.hasLayer('gl-1')).toBe(true)
+    expect(map.layer.hasLayer('pl-1')).toBe(true)
+    expect(map.layer.getLayer('pl-1')).toBeInstanceOf(PrimitiveLayer)
     map.destroy()
   })
 
@@ -347,6 +354,25 @@ describe('Map3D', () => {
     expect(map.destroyed).toBe(true)
     expect(layer.destroyed).toBe(true)
     expect(graphic.destroyed).toBe(true)
+  })
+
+  it('端到端：点图元经 PrimitiveLayer 挂到 viewer.scene.primitives，map.destroy 级联清理（图元不可直连 map）', () => {
+    const map = new Map3D({
+      container: 'map-container',
+      layer: [{ type: 'primitive', options: { id: 'pl-1' } }],
+    })
+    const layer = map.layer.getLayer('pl-1') as PrimitiveLayer
+    const point = new PointPrimitive({ id: 'p1', position: [116.4, 39.9] })
+    layer.addGraphic(point)
+
+    const primitives = (map.viewer.scene as unknown as { primitives: { _items: unknown[] } })
+      .primitives
+    expect(primitives._items).toHaveLength(1)
+
+    map.destroy()
+    expect(layer.destroyed).toBe(true)
+    expect(point.destroyed).toBe(true)
+    expect(primitives._items).toHaveLength(0)
   })
 
   it('map3d:ready 时序守护：触发时全部 Manager 的 init 均已执行', async () => {

@@ -61,7 +61,7 @@ export class Viewer {
   container: string | HTMLElement
   options: Record<string, unknown>
   entities = { add: vi.fn(), remove: vi.fn() }
-  scene = {}
+  scene = { primitives: createPrimitiveCollection() }
   imageryLayers = createImageryLayerCollection()
   private _destroyed = false
 
@@ -294,4 +294,163 @@ export class TilingScheme {
     }
     return new Cartesian2(x, y)
   }
+}
+
+// -- Primitive 系图元相关 mock（scene.primitives / Primitive / 几何与外观） --
+
+/** 有状态的 PrimitiveCollection mock：维护 scene.primitives 挂载列表，供图元增删断言 */
+function createPrimitiveCollection() {
+  const items: unknown[] = []
+  return {
+    /** 测试辅助：当前挂载列表（底 -> 顶） */
+    get _items() {
+      return items
+    },
+    get length() {
+      return items.length
+    },
+    add: vi.fn((primitive: unknown) => {
+      items.push(primitive)
+      return primitive
+    }),
+    remove: vi.fn((primitive: unknown) => {
+      const i = items.indexOf(primitive)
+      if (i !== -1) items.splice(i, 1)
+      return i !== -1
+    }),
+    contains: vi.fn((primitive: unknown) => items.includes(primitive)),
+    destroy: vi.fn(),
+  }
+}
+
+export class PointPrimitiveCollection {
+  show = true
+  private _points: Record<string, unknown>[] = []
+  private _destroyed = false
+
+  /** 测试辅助：集合内的点 */
+  get _all() {
+    return this._points
+  }
+
+  get length() {
+    return this._points.length
+  }
+
+  add = vi.fn((options: Record<string, unknown> = {}) => {
+    const point = { show: true, ...options }
+    this._points.push(point)
+    return point
+  })
+
+  remove = vi.fn((point: unknown) => {
+    const i = this._points.indexOf(point)
+    if (i !== -1) this._points.splice(i, 1)
+    return i !== -1
+  })
+
+  destroy(): void {
+    this._destroyed = true
+  }
+
+  isDestroyed(): boolean {
+    return this._destroyed
+  }
+}
+
+export class Primitive {
+  show: boolean
+  geometryInstances?: unknown
+  appearance?: unknown
+  private _destroyed = false
+
+  constructor(options: Record<string, unknown> = {}) {
+    this.geometryInstances = options.geometryInstances
+    this.appearance = options.appearance
+    this.show = (options.show as boolean | undefined) ?? true
+  }
+
+  destroy(): void {
+    this._destroyed = true
+  }
+
+  isDestroyed(): boolean {
+    return this._destroyed
+  }
+}
+
+export class GeometryInstance {
+  geometry: unknown
+  id?: unknown
+  attributes?: Record<string, unknown>
+
+  constructor(options: { geometry: unknown; id?: unknown; attributes?: Record<string, unknown> }) {
+    this.geometry = options.geometry
+    this.id = options.id
+    this.attributes = options.attributes
+  }
+}
+
+export class PolylineGeometry {
+  positions: Cartesian3[]
+  width?: number
+  colors?: unknown[]
+
+  constructor(options: { positions: Cartesian3[]; width?: number; colors?: unknown[] }) {
+    this.positions = options.positions
+    this.width = options.width
+    this.colors = options.colors
+  }
+}
+
+export class PolygonGeometry {
+  positions?: Cartesian3[]
+  height?: number
+  extrudedHeight?: number
+
+  constructor(options: Record<string, unknown> = {}) {
+    this.positions = options.positions as Cartesian3[] | undefined
+    this.height = options.height as number | undefined
+    this.extrudedHeight = options.extrudedHeight as number | undefined
+  }
+
+  static fromPositions = vi.fn(
+    (options: { positions: Cartesian3[]; height?: number; extrudedHeight?: number }) =>
+      new PolygonGeometry(options),
+  )
+}
+
+export class PerInstanceColorAppearance {
+  options: Record<string, unknown>
+
+  constructor(options: Record<string, unknown> = {}) {
+    this.options = options
+  }
+}
+
+export class PolylineColorAppearance {
+  options: Record<string, unknown>
+
+  constructor(options: Record<string, unknown> = {}) {
+    this.options = options
+  }
+}
+
+export class ColorGeometryInstanceAttribute {
+  red: number
+  green: number
+  blue: number
+  alpha: number
+
+  constructor(red = 1, green = 1, blue = 1, alpha = 1) {
+    this.red = red
+    this.green = green
+    this.blue = blue
+    this.alpha = alpha
+  }
+
+  static fromColor = vi.fn(
+    (color: { red: number; green: number; blue: number; alpha: number }) =>
+      new ColorGeometryInstanceAttribute(color.red, color.green, color.blue, color.alpha),
+  )
 }
