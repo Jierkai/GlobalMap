@@ -15,6 +15,9 @@
 > 9. **`cesiumBaseUrl` 直接删除，零配置自动识别**（2026-07-28）：`Map3DOptions` 不再暴露 `cesiumBaseUrl`——库内部按"npm 依赖场景（打包器插件已设 `window.CESIUM_BASE_URL`）→ lib 场景（script 标签探测）→ 约定值 `/cesium` + dev 警告"自动识别，工程只服务 npm 依赖与 lib 两种消费场景，不支持自定义路径等边缘场景。动机：静态资源部署是工程问题，不该让消费者感知。
 > 10. **删除 material / transform / resource 三个 Manager**（2026-07-28 二轮审计）：Manager 存在的充要条件是“管理**有生命周期的能力实例**且依赖 viewer 运行时”。材质是图元 style 属性（自定义材质注册 = 工具函数）；坐标转换是纯计算（不依赖 viewer、无 init/destroy）；资源加载分散到各域（加载归 layer/graphic，缓存 = 工具）。三者均不满足 Manager 充要条件，降级为 core/util 或 shared 工具函数，`map3d` 不暴露 getter。至此能力域 getter 定为 **8 个**（§5.1）。
 
+>
+> 11. **scene 域定稿 + 删除 `viewerOptions`**（2026-08-18 设计定稿，批次 9）：① `Map3DOptions` 具体化 `scene`（新增 §5.10 SceneOptions：初始视角/渲染/环境/光照/后处理/相机控制），`control` 已先行具体化为强类型；② **删除 `viewerOptions`**--公共 API 无透传兜底，UI 控件归 `control`、影像归 `basemapsLayer`、渲染参数归 `scene`，其余字段一律不支持；③ cesium peer 升至 `>=1.140.0`。
+
 ## 1. 项目背景
 
 GlobalMap 是一个基于 Cesium 二次封装的三维地图库，定位为 Mars3D 的开源替代方案。
@@ -266,26 +269,27 @@ Mars3D 式归属模型——图元不游离于全局，而是归属某个图层�
 
 ### 5.9 Map3DOptions 与初始化配置
 
-`Map3D` 构造项含 `container` / `viewerOptions` 及初始化配置；`cesiumBaseUrl` 不暴露（§5.7 自动识别）；未开发能力域先以 `Record<string, unknown>` 占位，待各域开发时再具体化为强类型。
+`Map3D` 构造项含 `container` 及初始化配置；`cesiumBaseUrl` 不暴露（§5.7 自动识别）；`viewerOptions` 已删除（无透传兜底，见 §5.10）；未开发能力域先以 `Record<string, unknown>` 占位，待各域开发时再具体化为强类型。
 
 ```typescript
 interface Map3DOptions {
   container: string | HTMLElement
-  viewerOptions?: Record<string, unknown>
 
   /** 初始化图层集合：构造完成后按序 addLayer */
   layer?: LayerInitItem[]
   /** Cesium 底图集合：作为 baseLayerPicker 的影像源列表，首项为默认底图 */
   basemapsLayer?: BasemapItem[]
 
-  // —— 以下为未开发能力域的占位配置项，先以 Record 占位 ——
+  /** 场景配置（§5.10）：初始视角/渲染/环境/光照/后处理/相机控制 */
+  scene?: SceneOptions
+
+  // -- 以下为未开发能力域的占位配置项，先以 Record 占位 --
+  control?: Record<string, unknown>
   plot?: Record<string, unknown>
   measure?: Record<string, unknown> // 对齐 Mars3D 的 thing 类（量算/分析实例集合）
   roam?: Record<string, unknown>
   effect?: Record<string, unknown>
   analyse?: Record<string, unknown>
-  control?: Record<string, unknown>
-  scene?: Record<string, unknown>
 }
 
 /** 初始化图层项：图层未开发阶段先用 Record 占位，后续具体化为判别联合（按 type 区分图层种类） */
@@ -297,6 +301,88 @@ type BasemapItem = Record<string, unknown>
 
 - **占位原则**：`layer`/`basemapsLayer` 是骨架后首个开发域（图层），其元素类型先 `Record` 占位、图层开发时具体化；其余能力域的占位配置项同理——先声明 key 让 `Map3DOptions` 形状稳定，避免后续每开一个域就改构造签名。
 - **插件式能力**：能力实例（某次测量、某条通视、某个控件）在对应域开发后，以 `map.<domain>.add(instance)` 形式挂到 Manager 端口；`measure` 域对齐 Mars3D 的 `thing` 类语义。
+
+- **无兜底逃生舱（2026-08-18 新增原则）**：配置项不设透传兜底。未在类型中显式声明的功能即为不支持；禁止将引擎原生选项对象整体透传进公共 API，防止引擎类型泄漏。
+- **`viewerOptions` 去向（2026-08-18 删除，破坏性变更）**：已知字段归属为--① UI 开关（infoBox / geocoder / baseLayerPicker / animation / timeline 等）归 `control` 域；② `baseLayer` / `imageryProviderViewModels` / `selectedImageryProviderViewModel` 归 `basemapsLayer` 内部机制；③ `requestRenderMode` / `maximumRenderTimeChange` / `resolutionScale` / `msaaSamples` 归 `scene`。其余无归属字段一律不支持（无 escape hatch）。
+
+### 5.10 SceneOptions：场景配置（2026-08-18 定稿）
+
+scene 域在 `Map3DOptions.scene` 上以强类型配置项暴露，分六组：初始视角 / 渲染 / 环境 / 光照 / 后处理 / 相机控制。字段语义与实现落点如下。
+
+```typescript
+export interface SceneOptions {
+  /** 初始视角（初始化完成后、ready 事件前同步定位） */
+  center?: SceneCenterOptions
+
+  // ---------- 渲染 ----------
+  showFps?: boolean            // 帧率面板，默认 false
+  resolutionScale?: number     // 分辨率缩放 0.5~1.0，默认 1.0
+  requestRenderMode?: boolean  // 按需渲染，默认 false；构造期生效
+  maximumRenderTimeChange?: number // 空闲毫秒后进入按需渲染，默认 5000；构造期生效
+  msaaSamples?: number         // 采样数 1/2/4/8，默认 1；构造期生效
+
+  // ---------- 环境 ----------
+  backgroundColor?: string     // 背景色（关天空盒后生效）
+  showSkyBox?: boolean         // 星空背景，默认 true
+  showSun?: boolean            // 太阳，默认 true
+  showMoon?: boolean           // 月亮，默认 true
+  showSkyAtmosphere?: boolean  // 大气层光晕，默认 true
+  showFog?: boolean            // 地面雾效，默认 true
+  showGlobe?: boolean          // 星球本体，默认 true
+
+  // ---------- 光照（大气层光照模型） ----------
+  enableLighting?: boolean     // 地表日照/昼夜半球，默认 false
+  enableSunClock?: boolean     // 真实时间驱动太阳，默认 false
+  lightIntensity?: number      // 大气层光照强度 0~2，默认 1.0；依赖 >=1.140 接口，挂载对象以 1.140 类型声明实测为准，无则删除该字段
+
+  // ---------- 后处理 ----------
+  // 预留区：brightness/nightVision 等全屏后处理后续追加；场景内特效对象归 effect 域
+  bloom?: SceneBloomOptions
+
+  // ---------- 相机控制 ----------
+  cameraController?: SceneCameraControllerOptions
+}
+
+export interface SceneCenterOptions {
+  lng: number                  // 经度（度）
+  lat: number                  // 纬度（度）
+  alt?: number                 // 高度（米），默认 1000
+  heading?: number             // 航向（度，0=正北），默认 0
+  pitch?: number               // 俯仰（度，0=垂直向下），默认 -90
+  roll?: number                // 翻滚（度），默认 0
+}
+
+export interface SceneBloomOptions {
+  enabled?: boolean            // 默认 true
+  bloomIntensity?: number      // 强度 0~10，默认 0.9
+  bloomRadius?: number         // 半径 0~10，默认 0.3
+}
+
+export interface SceneCameraControllerOptions {
+  enableZoom?: boolean         // 默认 true
+  enableRotate?: boolean       // 默认 true
+  enableTilt?: boolean         // 默认 true
+  minimumZoomDistance?: number // 默认 1
+  maximumZoomDistance?: number // 默认不限
+  inertiaSpin?: number         // 缩放惯性，默认 0.85
+}
+```
+
+**实现落点**：
+
+| 字段 | 落点 |
+| --- | --- |
+| center | ready 前 camera.setView（同步） |
+| requestRenderMode / maximumRenderTimeChange / msaaSamples | 构造 Viewer 前合并进构造参数 |
+| showFps | scene.debugShowFramesPerSecond |
+| backgroundColor / showSkyBox / showSun / showMoon / showGlobe | scene 对应属性 |
+| showSkyAtmosphere / showFog | scene.skyAtmosphere.show / scene.fog.enabled |
+| enableLighting / enableSunClock / lightIntensity | 星球光照 + 时钟驱动；lightIntensity 以 1.140 实测为准 |
+| bloom | scene.postProcessStages.bloom（enabled/intensity/radius） |
+| cameraController | scene.screenSpaceCameraController 对应属性 |
+
+- **生效时机**：构造期字段（requestRenderMode / maximumRenderTimeChange / msaaSamples）在 `new Viewer()` 前合并进构造参数；其余字段在 Viewer 构造后、`map3d:ready` 之前同步应用（center 用 camera.setView 同步定位，保证 ready 回调时视角已就位）。
+- **依赖约束**：cesium peer `>=1.120.0 <1.124.0` 升至 `>=1.140.0`；zip.js override（钉住 2.7.73）在升级后实测，若 1.140 引擎不再深导入 `lib/zip-no-worker.js` 旧路径则删除，否则保留并记录原因。
 
 ## 6. 工程化配置
 

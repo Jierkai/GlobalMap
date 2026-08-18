@@ -704,6 +704,77 @@
 
 ---
 
+## 4.5 批次 9：scene 域开发 + 删除 viewerOptions（2026-08-18 设计定稿）
+
+> 背景：scene 域为骨架后首个具体化的能力域配置（layer/basemapsLayer/control 已先行）。design.md 已完成 §5.9 修订（删除 `viewerOptions`）与新增 §5.10（SceneOptions 定稿 + 无兜底逃生舱原则）。本批次同步升级 cesium peer 至 `>=1.140.0`。
+>
+> 破坏性变更：`Map3DOptions.viewerOptions` 删除，无兜底。UI 开关归 `control`、影像归 `basemapsLayer`、渲染参数归 `scene`，其余字段一律不支持。
+
+### 任务 45：cesium 升级 1.140（硬前置）
+
+- 文件：
+  - `packages/core/package.json`（peerDependencies `cesium >=1.140.0`、devDependencies `cesium 1.140.0`）
+  - `package.json`（pnpm.overrides 的 zip.js 视实测结果决定是否保留）
+  - `pnpm-lock.yaml`（install 重新生成）
+  - `packages/core/__mocks__/cesium.ts`（按需补充）
+- 描述：升级 cesium 至 1.140.0 并全量回归；实测 ① 1.140 引擎是否仍深导入 `@zip.js/zip.js/lib/zip-no-worker.js`（override 可删则删）；② `lightIntensity` 对应的大气层光照强度接口（挂载对象以 1.140 类型声明为准，无则从 §5.10/类型中删除该字段并记录）。
+- 验证：全量测试全绿 + example `pnpm dev` 预打包不崩 + 4 包 build + external 0 泄漏 + demo 冒烟（无 ion 环境）。
+- 依赖：无（本批次硬前置）
+- 预计时间：15 分钟
+
+### 任务 46：scene 类型定义
+
+- 文件：
+  - `packages/core/src/type/scene.ts`（新建：SceneOptions / SceneCenterOptions / SceneBloomOptions / SceneCameraControllerOptions）
+  - `packages/core/src/type/map.ts`（`scene?: Record<string, unknown>` -> `scene?: SceneOptions`）
+  - `packages/core/src/type/index.ts`（导出 scene 系类型）
+- 描述：按 design.md §5.10 落地全部类型（若任务 45 实测无 lightIntensity 接口则不含该字段）。
+- 验证：`vue-tsc`/`tsc` 类型检查通过；core 测试不回归。
+- 依赖：任务 45
+- 预计时间：5 分钟
+
+### 任务 47：SceneManager 构造后应用（TDD）
+
+- 文件：
+  - `packages/core/src/scene/SceneManager.ts`（实现 scene 属性应用 + center 定位）
+  - `packages/core/src/scene/__tests__/SceneManager.test.ts`（红 -> 绿）
+  - `packages/core/src/map/Map3D.ts`（`new SceneManager(this, options.scene)`）
+  - `packages/core/__mocks__/cesium.ts`（补 camera/scene 属性 mock）
+- 描述：构造后应用类字段--center（camera.setView 同步，ready 前完成）、showFps、resolutionScale、backgroundColor、showSkyBox/showSun/showMoon/showSkyAtmosphere/showFog/showGlobe、enableLighting/enableSunClock（/lightIntensity）、bloom。
+- TDD 用例：默认值不改动引擎属性（或按引擎默认一致）；显式值正确落到对应属性；center 经 Camera.setView 定位且发生在 ready 前；bloom 三参数落 postProcessStages.bloom。Red -> Green -> 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：任务 46
+- 预计时间：8 分钟
+
+### 任务 48：构造期合并（TDD）
+
+- 文件：
+  - `packages/core/src/map/Map3D.ts`（scene 构造期字段合并进 Viewer 构造参数）
+  - `packages/core/src/scene/SceneManager.ts`（cameraController 应用：screenSpaceCameraController 对应属性）
+  - `packages/core/src/map/__tests__/Map3D.test.ts` / `packages/core/src/scene/__tests__/SceneManager.test.ts`（红 -> 绿）
+- 描述：requestRenderMode / maximumRenderTimeChange / msaaSamples 在 `new Viewer()` 前合并进构造参数；cameraController 应用到 scene.screenSpaceCameraController。
+- TDD 用例：传 scene.requestRenderMode 等字段后 Viewer 构造 options 含对应键；cameraController 各开关落到 screenSpaceCameraController 对应属性。Red -> Green -> 重构。
+- 验证：`pnpm --filter @globalmap/core test` 通过。
+- 依赖：任务 47
+- 预计时间：6 分钟
+
+### 任务 49：删除 viewerOptions + 整仓回归 + changeset
+
+- 文件：
+  - `packages/core/src/type/map.ts`（删除 `viewerOptions` 字段）
+  - `packages/core/src/map/Map3D.ts`（删除 viewerOptions 合并逻辑，无兜底 OSM 逻辑调整）
+  - `packages/core/src/map/__tests__/Map3D.test.ts`（删 viewerOptions 用例，补「viewerOptions 不存在」守护）
+  - `README.md` / `packages/docs/api/index.md`（类型签名同步）
+  - `.changeset/`（minor changeset）
+- 描述：删除 viewerOptions 后，Viewer 构造参数只来自 control 键合并 + basemapsLayer + scene 构造期字段；兜底底图逻辑同步调整（不再读 viewerOptions.baseLayer）。README/docs 同步签名与破坏性变更说明。
+- 验证：全量回归 `pnpm lint && pnpm -r test && pnpm -r build`；external 0 泄漏；example dev 冒烟；changeset 已生成。
+- 依赖：任务 48
+- 预计时间：10 分钟
+
+> **检查点 9.1**：任务 45~49 全绿 + 整仓回归通过 + changeset 生成。
+
+---
+
 ## 5. 关键风险与对策
 
 | 风险                                                     | 对策                                                                                                    |
